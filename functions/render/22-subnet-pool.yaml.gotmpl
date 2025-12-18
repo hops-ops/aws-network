@@ -1,0 +1,42 @@
+# code: language=yaml
+
+# On-demand child IPAM pool for subnet allocations
+# Created when subnets.ipam.enabled but no existing pool is referenced
+# This pool is a child of the VPC's IPAM pool
+
+{{- if $createOnDemandSubnetPool }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPool
+metadata:
+  name: {{ $onDemandSubnetPoolName }}
+  annotations:
+    {{ setResourceNameAnnotation "subnet-ipam-pool" }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    addressFamily: ipv4
+    description: "Subnet pool for {{ $networkName }} (auto-created)"
+    locale: {{ $awsRegion }}
+    region: {{ $awsRegion }}
+    allocationDefaultNetmaskLength: {{ $netmaskLength }}
+    allocationMinNetmaskLength: {{ $netmaskLength }}
+    allocationMaxNetmaskLength: {{ $netmaskLength }}
+    {{- /* Reference parent VPC pool */}}
+    {{- if $ipv4IpamPoolRefName }}
+    sourceIpamPoolIdRef:
+      name: {{ $ipv4IpamPoolRefName }}
+    {{- else if $ipv4IpamSelectorHasLabels }}
+    sourceIpamPoolIdSelector:
+      matchLabels:
+        {{ $ipv4IpamPoolSelectorLabels | toYaml | nindent 8 }}
+    {{- end }}
+    tags:
+      {{ $awsTags | toYaml | nindent 6 }}
+      Name: {{ $onDemandSubnetPoolName }}
+  providerConfigRef:
+    kind: ProviderConfig
+    name: {{ $awsProviderConfig }}
+{{- end }}

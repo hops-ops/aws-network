@@ -23,3 +23,5 @@ spec:
       - a
       - b
     netmaskLength: 20
+  nat:
+    enabled: true

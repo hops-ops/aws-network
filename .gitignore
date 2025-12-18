@@ -2,4 +2,4 @@ _output/
 .up/
 .venv/
 .tmp/
-tests/e2etest-*/aws-creds
+tests/**/secrets

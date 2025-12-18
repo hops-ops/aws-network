@@ -119,3 +119,88 @@
 {{ $tgwAttachAtProvider := $tgwAttachStatus.atProvider | default (dict) }}
 {{ $observedTgwAttachmentId := $tgwAttachAtProvider.id | default "" }}
 {{ $observedTgwAttachmentState := $tgwAttachAtProvider.state | default "" }}
+
+# Subnet CIDR allocation: either from IPAM allocations or calculated from VPC CIDR
+{{ $allocatedSubnetCidrs := dict }}
+{{ $subnetCidrAllocationsReady := dict }}
+
+# Extract CIDRs from VPCIpamPoolCidrAllocation resources (when subnets.ipam.enabled)
+{{ if $useSubnetIpam }}
+  {{ range $azConfig := $azConfigs }}
+    {{ with $azConfig.public }}
+      {{ $allocResourceName := printf "cidr-alloc-%s" .resourceName }}
+      {{ $allocEntry := get $observed $allocResourceName | default (dict) }}
+      {{ $allocResource := $allocEntry.resource | default (dict) }}
+      {{ $allocStatus := $allocResource.status | default (dict) }}
+      {{ $allocConditions := $allocStatus.conditions | default (list) }}
+      {{ $allocAtProvider := $allocStatus.atProvider | default (dict) }}
+      {{ $allocCidr := $allocAtProvider.cidr | default "" }}
+      {{ $allocReady := false }}
+      {{ range $allocConditions }}
+        {{ if and (eq (get . "type") "Ready") (eq (get . "status") "True") }}
+          {{ $allocReady = true }}
+        {{ end }}
+      {{ end }}
+      {{ $subnetCidrAllocationsReady = merge $subnetCidrAllocationsReady (dict .resourceName $allocReady) }}
+      {{ if $allocCidr }}
+        {{ $allocatedSubnetCidrs = merge $allocatedSubnetCidrs (dict .resourceName $allocCidr) }}
+      {{ end }}
+    {{ end }}
+    {{ with $azConfig.private }}
+      {{ $allocResourceName := printf "cidr-alloc-%s" .resourceName }}
+      {{ $allocEntry := get $observed $allocResourceName | default (dict) }}
+      {{ $allocResource := $allocEntry.resource | default (dict) }}
+      {{ $allocStatus := $allocResource.status | default (dict) }}
+      {{ $allocConditions := $allocStatus.conditions | default (list) }}
+      {{ $allocAtProvider := $allocStatus.atProvider | default (dict) }}
+      {{ $allocCidr := $allocAtProvider.cidr | default "" }}
+      {{ $allocReady := false }}
+      {{ range $allocConditions }}
+        {{ if and (eq (get . "type") "Ready") (eq (get . "status") "True") }}
+          {{ $allocReady = true }}
+        {{ end }}
+      {{ end }}
+      {{ $subnetCidrAllocationsReady = merge $subnetCidrAllocationsReady (dict .resourceName $allocReady) }}
+      {{ if $allocCidr }}
+        {{ $allocatedSubnetCidrs = merge $allocatedSubnetCidrs (dict .resourceName $allocCidr) }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+# Calculate subnet CIDRs from observed VPC CIDR (for IPAM mode without subnet allocations)
+# When VPC gets CIDR from IPAM, we calculate subnet CIDRs using a fixed scheme:
+# - VPC is /16, subnets are /20 (16 possible /20 subnets)
+# - Public subnets: third octet = index * 16 (0, 16, 32)
+# - Private subnets: third octet = 128 + index * 16 (128, 144, 160)
+{{ $calculatedSubnetCidrs := dict }}
+{{ $canCalculateSubnetCidrs := false }}
+
+{{ if and $useIpv4Ipam (not $useSubnetIpam) $observedVpcCidr }}
+  {{ $vpcCidrParts := splitList "/" $observedVpcCidr }}
+  {{ if eq (len $vpcCidrParts) 2 }}
+    {{ $vpcNetwork := index $vpcCidrParts 0 }}
+    {{ $octets := splitList "." $vpcNetwork }}
+    {{ if eq (len $octets) 4 }}
+      {{ $octet1 := index $octets 0 }}
+      {{ $octet2 := index $octets 1 }}
+      {{ $canCalculateSubnetCidrs = true }}
+
+      # Calculate CIDRs for each AZ
+      {{ range $i, $azConfig := $azConfigs }}
+        {{ $publicThirdOctet := mul $i 16 }}
+        {{ $privateThirdOctet := add 128 (mul $i 16) }}
+
+        {{ with $azConfig.public }}
+          {{ $publicCidr := printf "%s.%s.%d.0/%d" $octet1 $octet2 $publicThirdOctet .netmaskLength }}
+          {{ $calculatedSubnetCidrs = merge $calculatedSubnetCidrs (dict .resourceName $publicCidr) }}
+        {{ end }}
+
+        {{ with $azConfig.private }}
+          {{ $privateCidr := printf "%s.%s.%d.0/%d" $octet1 $octet2 $privateThirdOctet .netmaskLength }}
+          {{ $calculatedSubnetCidrs = merge $calculatedSubnetCidrs (dict .resourceName $privateCidr) }}
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}

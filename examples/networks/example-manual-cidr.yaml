@@ -29,6 +29,8 @@ spec:
               availabilityZone: b
             - cidr: 172.16.160.0/20
               availabilityZone: c
+  nat:
+    enabled: true
   subnets:
     availabilityZones:
       - a

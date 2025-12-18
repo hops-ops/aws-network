@@ -25,9 +25,21 @@ spec:
       enabled: true
       amazonProvided: true
     mode: dual-stack
+  nat:
+    enabled: false
 ```
 
-**Cost: ~$32/mo** (SingleAz NAT) | **Created: VPC, 6 subnets, IGW, NAT, Egress-Only IGW, routes**
+**Cost: ~$0/mo** | **Created: VPC, 6 subnets, IGW, Egress-Only IGW, routes**
+
+### Why No NAT by Default?
+
+For Kubernetes workloads, NAT Gateways are often unnecessary:
+
+1. **Public ingress via Load Balancers** - The platform (AWS Load Balancer Controller) handles external traffic to your services. Load balancers provide the public-facing endpoint, not NAT.
+2. **IPv6 egress is free** - With dual-stack enabled, pods use the Egress-Only Internet Gateway for outbound IPv6 traffic at no cost.
+3. **VPC Endpoints for AWS services** - Access ECR, S3, and other AWS services via private endpoints instead of routing through the internet.
+
+This saves ~$32/mo for individuals. Add NAT later if you have workloads that require IPv4 egress to external services.
 
 ## Why Start with IPAM + IPv6?
 
@@ -102,10 +114,11 @@ With dual-stack networking, IPv6 traffic uses an **Egress-Only Internet Gateway*
 
 You don't need NAT if:
 
-1. **IPv6-only workloads** - Use Egress-Only IGW (free, HA by default)
+1. **IPv6 egress** - Use Egress-Only IGW (free, HA by default) for IPv6 traffic
 2. **VPC Endpoints** - Access AWS services (S3, ECR, etc.) via private endpoints instead of internet
-3. **Isolated workloads** - No internet access needed (air-gapped, internal-only)
-4. **Transit Gateway** - Route through a central egress VPC instead
+3. **Nodes in public subnets** - EKS nodes with public IPs can egress directly through the IGW
+4. **Isolated workloads** - No internet access needed (air-gapped, internal-only)
+5. **Transit Gateway** - Route through a central egress VPC instead
 
 **Example: ECR without NAT**
 
@@ -116,11 +129,20 @@ Instead of pulling images through NAT, create VPC endpoints for ECR:
 
 This eliminates NAT dependency for container workloads and can significantly reduce costs.
 
+**Service Mesh Egress Gateways (Istio, etc.)**
+
+Istio egress gateways centralize and control outbound traffic, but the gateway pods still need outbound connectivity. Options:
+- Run gateway pods on nodes in public subnets with public IPs
+- Use IPv6 egress for gateway traffic
+- Add NAT only if gateways need IPv4 egress to external services
+
+The gateway doesn't replace NAT - it's a control plane on top of the underlying network connectivity.
+
 ## Use Cases: Individual to Enterprise
 
-### Stage 1: Individual Developer (~$32/mo)
+### Stage 1: Individual Developer (~$0/mo)
 
-Starting out? Use the minimal configuration with SingleAz NAT.
+Starting out? Use the minimal configuration without NAT. The platform handles public connectivity via load balancers for ingress, and IPv6 egress is free.
 
 ```yaml
 apiVersion: aws.hops.ops.com.ai/v1alpha1
@@ -140,18 +162,20 @@ spec:
       enabled: true
       amazonProvided: true
     mode: dual-stack
+  nat:
+    enabled: false
 ```
 
 **What you get:**
 - VPC with IPv4 (from IPAM) + IPv6 (Amazon-provided /56)
 - 3 public + 3 private subnets across AZs a, b, c (HA from day one)
-- Single NAT Gateway in AZ-a (handles all IPv4 private egress)
+- No NAT Gateway (save ~$32/mo) - use VPC endpoints for AWS services
 - Egress-Only IGW for IPv6 private traffic (free, no single point of failure)
-- Ready for EKS Auto Mode
+- Ready for EKS Auto Mode with AWS Load Balancer Controller for ingress
 
-### Stage 2: Small Team (~$32/mo)
+### Stage 2: Small Team (~$0-32/mo)
 
-Same cost, but customize for your team's needs.
+Customize for your team's needs. Add SingleAz NAT only if you need IPv4 egress to external services that don't support IPv6.
 
 ```yaml
 apiVersion: aws.hops.ops.com.ai/v1alpha1
@@ -176,6 +200,8 @@ spec:
     mode: dual-stack
   subnets:
     netmaskLength: 21  # /21 = 2048 IPs per subnet (default 3 AZs)
+  nat:
+    enabled: false  # Add `enabled: true` + `strategy: SingleAz` if IPv4 egress needed
 ```
 
 ### Stage 3: Growing Startup (~$96/mo)
@@ -337,14 +363,15 @@ spec:
 
 | Configuration | NAT Strategy | Monthly Cost |
 |--------------|--------------|--------------|
+| Individual (no NAT) | None | $0 |
+| Small Team (no NAT) | None | $0 |
 | Private Only | None | $0 |
-| Individual (SingleAz) | SingleAz | ~$32 |
-| Team (2 AZ, SingleAz) | SingleAz | ~$32 |
+| Small Team (SingleAz) | SingleAz | ~$32 |
 | Production (HA NAT) | HighlyAvailable | ~$96 |
 | Enterprise (HA + TGW) | HighlyAvailable | ~$132 |
 | Enterprise (Full) | HighlyAvailable | ~$150+ |
 
-**Note:** IPv6 egress via Egress-Only IGW is free. Only IPv4 NAT Gateways cost money.
+**Note:** IPv6 egress via Egress-Only IGW is free. Only IPv4 NAT Gateways cost money. For Kubernetes workloads, the platform handles public ingress via load balancers, and VPC endpoints provide private access to AWS services like ECR and S3.
 
 ## Prerequisites
 

@@ -18,5 +18,3 @@ spec:
   subnets:
     types:
       - private
-  nat:
-    enabled: false

@@ -1,0 +1,110 @@
+# code: language=yaml
+
+# VPCIpamPoolCidrAllocation resources for IPAM-managed subnet CIDR allocation
+# Only rendered when subnets.ipam.enabled is true
+# These allocate CIDRs from a dedicated subnet pool (stricter central control)
+#
+# Pool selection:
+# 1. If existing pool referenced (poolRef/globalPoolName/poolSelector) → use it
+# 2. If on-demand pool created → use it (gated on pool being Ready)
+
+{{- if $useSubnetIpam }}
+
+{{- /* Gate on-demand allocations on child pool being Ready */}}
+{{- $onDemandPoolReady := true }}
+{{- if $createOnDemandSubnetPool }}
+  {{- $poolEntry := get $observed "subnet-ipam-pool" | default (dict) }}
+  {{- $poolResource := $poolEntry.resource | default (dict) }}
+  {{- $poolStatus := $poolResource.status | default (dict) }}
+  {{- $poolConditions := $poolStatus.conditions | default (list) }}
+  {{- $onDemandPoolReady = false }}
+  {{- range $poolConditions }}
+    {{- if and (eq (get . "type") "Ready") (eq (get . "status") "True") }}
+      {{- $onDemandPoolReady = true }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- /* Only render allocations when pool is available */}}
+{{- $canRenderAllocations := or $hasExistingSubnetPool $onDemandPoolReady }}
+
+{{- if $canRenderAllocations }}
+
+# Public subnet CIDR allocations
+{{- range $azConfig := $azConfigs }}
+{{- with $azConfig.public }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: {{ .name }}-cidr
+  annotations:
+    {{ setResourceNameAnnotation (printf "cidr-alloc-%s" .resourceName) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/tier: public
+    hops.ops.com.ai/az: {{ $azConfig.suffix }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    region: {{ $awsRegion }}
+    netmaskLength: {{ .netmaskLength }}
+    description: "Subnet CIDR for {{ .name }}"
+    {{- if $createOnDemandSubnetPool }}
+    {{- /* Use on-demand child pool */}}
+    ipamPoolIdRef:
+      name: {{ $onDemandSubnetPoolName }}
+    {{- else if $subnetIpamPoolRefName }}
+    ipamPoolIdRef:
+      name: {{ $subnetIpamPoolRefName }}
+    {{- else if $subnetIpamSelectorHasLabels }}
+    ipamPoolIdSelector:
+      matchLabels:
+        {{ $subnetIpamPoolSelectorLabels | toYaml | nindent 8 }}
+    {{- end }}
+  providerConfigRef:
+    kind: ProviderConfig
+    name: {{ $awsProviderConfig }}
+{{- end }}
+{{- end }}
+
+# Private subnet CIDR allocations
+{{- range $azConfig := $azConfigs }}
+{{- with $azConfig.private }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: {{ .name }}-cidr
+  annotations:
+    {{ setResourceNameAnnotation (printf "cidr-alloc-%s" .resourceName) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/tier: private
+    hops.ops.com.ai/az: {{ $azConfig.suffix }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    region: {{ $awsRegion }}
+    netmaskLength: {{ .netmaskLength }}
+    description: "Subnet CIDR for {{ .name }}"
+    {{- if $createOnDemandSubnetPool }}
+    {{- /* Use on-demand child pool */}}
+    ipamPoolIdRef:
+      name: {{ $onDemandSubnetPoolName }}
+    {{- else if $subnetIpamPoolRefName }}
+    ipamPoolIdRef:
+      name: {{ $subnetIpamPoolRefName }}
+    {{- else if $subnetIpamSelectorHasLabels }}
+    ipamPoolIdSelector:
+      matchLabels:
+        {{ $subnetIpamPoolSelectorLabels | toYaml | nindent 8 }}
+    {{- end }}
+  providerConfigRef:
+    kind: ProviderConfig
+    name: {{ $awsProviderConfig }}
+{{- end }}
+{{- end }}
+
+{{- end }}
+{{- end }}

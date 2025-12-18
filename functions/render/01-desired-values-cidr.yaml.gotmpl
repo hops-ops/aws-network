@@ -76,3 +76,6 @@
 {{ $isIpv6Only := eq $cidrMode "ipv6-only" }}
 {{ $hasIpv4 := or (eq $cidrMode "ipv4-only") $isDualStack }}
 {{ $hasIpv6 := or $isDualStack $isIpv6Only }}
+
+# On-demand subnet pool: subnet IPAM enabled + VPC uses IPAM + no existing pool referenced
+{{ $createOnDemandSubnetPool := and $useSubnetIpam $useIpv4Ipam (not $hasExistingSubnetPool) }}

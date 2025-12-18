@@ -1,0 +1,18 @@
+# Observed VPC with IPAM-allocated CIDR
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: VPC
+metadata:
+  name: ondemand-subnets-vpc
+  annotations:
+    crossplane.io/composition-resource-name: vpc
+    gotemplating.fn.crossplane.io/composition-resource-name: vpc
+spec:
+  forProvider:
+    region: us-east-1
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  atProvider:
+    id: vpc-ondemand123
+    cidrBlock: 10.80.0.0/16

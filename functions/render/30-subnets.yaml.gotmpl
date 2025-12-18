@@ -1,8 +1,26 @@
 # code: language=yaml
 
 # Public Subnets
+# CIDR sources (in priority order):
+# 1. Subnet IPAM allocation (subnets.ipam.enabled) - from VPCIpamPoolCidrAllocation
+# 2. Calculated from VPC CIDR (cidr.ipv4.ipam) - deterministic math
+# 3. Manual (cidr.ipv4.manual) - explicit user-provided CIDRs
 {{- range $azConfig := $azConfigs }}
 {{- with $azConfig.public }}
+{{- $subnetCidr := "" }}
+{{- if $useSubnetIpam }}
+  {{- $subnetCidr = get $allocatedSubnetCidrs .resourceName }}
+{{- else if $useIpv4Ipam }}
+  {{- $subnetCidr = get $calculatedSubnetCidrs .resourceName }}
+{{- else if $useIpv4Manual }}
+  {{- range $manualPublicSubnets }}
+    {{- if eq .availabilityZone $azConfig.suffix }}
+      {{- $subnetCidr = .cidr }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- $needsIpamCidr := or $useSubnetIpam $useIpv4Ipam }}
+{{- if or (not $needsIpamCidr) $subnetCidr }}
 ---
 apiVersion: ec2.aws.upbound.io/v1beta1
 kind: Subnet
@@ -20,24 +38,7 @@ spec:
     vpcIdRef:
       name: {{ $vpcName }}
     mapPublicIpOnLaunch: {{ .mapPublicIpOnLaunch }}
-    {{- if $useIpv4Ipam }}
-    ipv4IpamPoolId: ""
-    ipv4NetmaskLength: {{ .netmaskLength }}
-    {{- if $ipv4IpamPoolRefName }}
-    ipv4IpamPoolIdRef:
-      name: {{ $ipv4IpamPoolRefName }}
-    {{- else if $ipv4IpamSelectorHasLabels }}
-    ipv4IpamPoolIdSelector:
-      matchLabels:
-        {{ $ipv4IpamPoolSelectorLabels | toYaml | nindent 8 }}
-    {{- end }}
-    {{- else if $useIpv4Manual }}
-    {{- range $manualPublicSubnets }}
-    {{- if eq .availabilityZone $azConfig.suffix }}
-    cidrBlock: {{ .cidr }}
-    {{- end }}
-    {{- end }}
-    {{- end }}
+    cidrBlock: {{ $subnetCidr }}
     {{- if $hasIpv6 }}
     assignIpv6AddressOnCreation: true
     ipv6Native: {{ $isIpv6Only }}
@@ -46,12 +47,27 @@ spec:
       {{ .tags | toYaml | nindent 6 }}
   providerConfigRef:
     name: {{ $awsProviderConfig }}
+{{- end }}
 {{- end }}
 {{- end }}
 
 # Private Subnets
 {{- range $azConfig := $azConfigs }}
 {{- with $azConfig.private }}
+{{- $subnetCidr := "" }}
+{{- if $useSubnetIpam }}
+  {{- $subnetCidr = get $allocatedSubnetCidrs .resourceName }}
+{{- else if $useIpv4Ipam }}
+  {{- $subnetCidr = get $calculatedSubnetCidrs .resourceName }}
+{{- else if $useIpv4Manual }}
+  {{- range $manualPrivateSubnets }}
+    {{- if eq .availabilityZone $azConfig.suffix }}
+      {{- $subnetCidr = .cidr }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- $needsIpamCidr := or $useSubnetIpam $useIpv4Ipam }}
+{{- if or (not $needsIpamCidr) $subnetCidr }}
 ---
 apiVersion: ec2.aws.upbound.io/v1beta1
 kind: Subnet
@@ -69,24 +85,7 @@ spec:
     vpcIdRef:
       name: {{ $vpcName }}
     mapPublicIpOnLaunch: {{ .mapPublicIpOnLaunch }}
-    {{- if $useIpv4Ipam }}
-    ipv4IpamPoolId: ""
-    ipv4NetmaskLength: {{ .netmaskLength }}
-    {{- if $ipv4IpamPoolRefName }}
-    ipv4IpamPoolIdRef:
-      name: {{ $ipv4IpamPoolRefName }}
-    {{- else if $ipv4IpamSelectorHasLabels }}
-    ipv4IpamPoolIdSelector:
-      matchLabels:
-        {{ $ipv4IpamPoolSelectorLabels | toYaml | nindent 8 }}
-    {{- end }}
-    {{- else if $useIpv4Manual }}
-    {{- range $manualPrivateSubnets }}
-    {{- if eq .availabilityZone $azConfig.suffix }}
-    cidrBlock: {{ .cidr }}
-    {{- end }}
-    {{- end }}
-    {{- end }}
+    cidrBlock: {{ $subnetCidr }}
     {{- if $hasIpv6 }}
     assignIpv6AddressOnCreation: true
     ipv6Native: {{ $isIpv6Only }}
@@ -95,5 +94,6 @@ spec:
       {{ .tags | toYaml | nindent 6 }}
   providerConfigRef:
     name: {{ $awsProviderConfig }}
+{{- end }}
 {{- end }}
 {{- end }}

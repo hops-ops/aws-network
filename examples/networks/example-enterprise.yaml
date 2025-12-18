@@ -35,6 +35,7 @@ spec:
     netmaskLength: 19  # Larger subnets for enterprise
 
   nat:
+    enabled: true
     strategy: HighlyAvailable  # One NAT per AZ
 
   transitGateway:

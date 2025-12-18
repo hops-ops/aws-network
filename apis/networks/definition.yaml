@@ -219,6 +219,39 @@ spec:
                     default:
                     - public
                     - private
+                  ipam:
+                    type: object
+                    description: |
+                      IPAM-based subnet CIDR allocation. When enabled, allocates subnet CIDRs from
+                      a dedicated subnet pool instead of calculating from VPC CIDR.
+
+                      Two modes:
+                      1. Reference existing pool: Set globalPoolName/poolRef/poolSelector
+                      2. Create on-demand: Omit pool reference - creates child pool from VPC's IPAM pool
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: Enable IPAM allocation for subnet CIDRs. When false (default), subnet CIDRs are calculated from VPC CIDR.
+                        default: false
+                      poolRef:
+                        type: object
+                        description: Direct reference to existing subnet IPAM pool resource.
+                        properties:
+                          name:
+                            type: string
+                          namespace:
+                            type: string
+                      globalPoolName:
+                        type: string
+                        description: Name of existing global subnet IPAM pool (selects via hops.ops.com.ai/global-pool label).
+                      poolSelector:
+                        type: object
+                        description: Custom label selector for existing subnet IPAM pool.
+                        properties:
+                          matchLabels:
+                            type: object
+                            additionalProperties:
+                              type: string
 
               # NAT Gateway Strategy
               nat:
@@ -228,7 +261,7 @@ spec:
                   enabled:
                     type: boolean
                     description: Enable NAT Gateways.
-                    default: true
+                    default: false
                   strategy:
                     type: string
                     description: NAT deployment strategy.

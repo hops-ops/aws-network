@@ -1,5 +1,6 @@
 # Minimal Network - Individual use case
-# Creates VPC with 3 public + 3 private subnets, SingleAz NAT (~$32/mo)
+# Creates VPC with 3 public + 3 private subnets, no NAT (~$0/mo)
+# Platform handles ingress via load balancers; IPv6 egress is free
 apiVersion: aws.hops.ops.com.ai/v1alpha1
 kind: Network
 metadata:
@@ -14,3 +15,7 @@ spec:
     ipv4:
       ipam:
         globalPoolName: sandbox
+    ipv6:
+      enabled: true
+      amazonProvided: true
+    mode: dual-stack

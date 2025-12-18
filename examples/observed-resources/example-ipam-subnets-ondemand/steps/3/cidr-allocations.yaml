@@ -1,0 +1,61 @@
+# Observed CIDR allocations from on-demand subnet pool
+# For example-ipam-subnets-ondemand: 2 AZs (a,b) x 2 types (public, private) = 4 allocations
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: ondemand-subnets-public-a-cidr
+  annotations:
+    crossplane.io/composition-resource-name: cidr-alloc-subnet-public-a
+    gotemplating.fn.crossplane.io/composition-resource-name: cidr-alloc-subnet-public-a
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  atProvider:
+    id: ipam-pool-alloc-pub-a
+    cidr: 10.80.1.0/24
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: ondemand-subnets-public-b-cidr
+  annotations:
+    crossplane.io/composition-resource-name: cidr-alloc-subnet-public-b
+    gotemplating.fn.crossplane.io/composition-resource-name: cidr-alloc-subnet-public-b
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  atProvider:
+    id: ipam-pool-alloc-pub-b
+    cidr: 10.80.2.0/24
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: ondemand-subnets-private-a-cidr
+  annotations:
+    crossplane.io/composition-resource-name: cidr-alloc-subnet-private-a
+    gotemplating.fn.crossplane.io/composition-resource-name: cidr-alloc-subnet-private-a
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  atProvider:
+    id: ipam-pool-alloc-priv-a
+    cidr: 10.80.101.0/24
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: ondemand-subnets-private-b-cidr
+  annotations:
+    crossplane.io/composition-resource-name: cidr-alloc-subnet-private-b
+    gotemplating.fn.crossplane.io/composition-resource-name: cidr-alloc-subnet-private-b
+status:
+  conditions:
+    - type: Ready
+      status: "True"
+  atProvider:
+    id: ipam-pool-alloc-priv-b
+    cidr: 10.80.102.0/24
