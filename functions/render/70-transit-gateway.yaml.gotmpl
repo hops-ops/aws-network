@@ -2,7 +2,7 @@
 
 {{- if $renderTgwAttachment }}
 ---
-apiVersion: ec2.aws.upbound.io/v1beta1
+apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: TransitGatewayVPCAttachment
 metadata:
   name: {{ $networkName }}-tgw-attachment
@@ -29,5 +29,6 @@ spec:
       {{ $awsTags | toYaml | nindent 6 }}
       Name: {{ $networkName }}-tgw-attachment
   providerConfigRef:
+    kind: ProviderConfig
     name: {{ $awsProviderConfig }}
 {{- end }}

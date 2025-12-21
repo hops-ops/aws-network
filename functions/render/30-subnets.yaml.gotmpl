@@ -22,7 +22,7 @@
 {{- $needsIpamCidr := or $useSubnetIpam $useIpv4Ipam }}
 {{- if or (not $needsIpamCidr) $subnetCidr }}
 ---
-apiVersion: ec2.aws.upbound.io/v1beta1
+apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Subnet
 metadata:
   name: {{ .name }}
@@ -46,6 +46,7 @@ spec:
     tags:
       {{ .tags | toYaml | nindent 6 }}
   providerConfigRef:
+    kind: ProviderConfig
     name: {{ $awsProviderConfig }}
 
 # Usage: VPC protects public subnet
@@ -60,12 +61,12 @@ metadata:
     {{ setResourceNameAnnotation (printf "usage-vpc-%s" .resourceName) }}
 spec:
   of:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: VPC
     resourceRef:
       name: {{ $networkName }}
   by:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: Subnet
     resourceRef:
       name: {{ .name }}
@@ -92,7 +93,7 @@ spec:
 {{- $needsIpamCidr := or $useSubnetIpam $useIpv4Ipam }}
 {{- if or (not $needsIpamCidr) $subnetCidr }}
 ---
-apiVersion: ec2.aws.upbound.io/v1beta1
+apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Subnet
 metadata:
   name: {{ .name }}
@@ -116,6 +117,7 @@ spec:
     tags:
       {{ .tags | toYaml | nindent 6 }}
   providerConfigRef:
+    kind: ProviderConfig
     name: {{ $awsProviderConfig }}
 
 # Usage: VPC protects private subnet
@@ -130,12 +132,12 @@ metadata:
     {{ setResourceNameAnnotation (printf "usage-vpc-%s" .resourceName) }}
 spec:
   of:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: VPC
     resourceRef:
       name: {{ $networkName }}
   by:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: Subnet
     resourceRef:
       name: {{ .name }}

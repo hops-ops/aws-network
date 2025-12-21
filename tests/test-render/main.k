@@ -13,7 +13,7 @@ _items = [
             assertResources: [
                 # VPC should be created with IPAM pool selector and IPv6
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "VPC"
                     metadata: {
                         name: "my-vpc"
@@ -26,13 +26,14 @@ _items = [
                             assignGeneratedIpv6CidrBlock: True
                         }
                         providerConfigRef: {
+                            kind: "ProviderConfig"
                             name: "my-cluster"
                         }
                     }
                 }
                 # Internet Gateway for public subnets
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "InternetGateway"
                     metadata: {
                         name: "my-vpc"
@@ -40,7 +41,7 @@ _items = [
                 }
                 # Egress-only IGW for IPv6 private egress
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "EgressOnlyInternetGateway"
                     metadata: {
                         name: "my-vpc"
@@ -48,7 +49,7 @@ _items = [
                 }
                 # Public route table
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "RouteTable"
                     metadata: {
                         name: "my-vpc-public"
@@ -69,7 +70,7 @@ _items = [
             assertResources: [
                 # VPC should be created
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "VPC"
                     metadata: {
                         name: "isolated-vpc"
@@ -77,7 +78,7 @@ _items = [
                 }
                 # Private route tables should exist
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "RouteTable"
                     metadata: {
                         name: "isolated-vpc-private-rt-a"
@@ -98,7 +99,7 @@ _items = [
             assertResources: [
                 # VPC with IPv6 enabled
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "VPC"
                     metadata: {
                         name: "ipv6-vpc"
@@ -111,7 +112,7 @@ _items = [
                 }
                 # Egress-only IGW for IPv6 private egress
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "EgressOnlyInternetGateway"
                     metadata: {
                         name: "ipv6-vpc"
@@ -119,7 +120,7 @@ _items = [
                 }
                 # NAT Gateway (SingleAz by default)
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "NATGateway"
                     metadata: {
                         name: "ipv6-vpc-nat-a"
@@ -127,7 +128,7 @@ _items = [
                 }
                 # EIP for NAT
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "EIP"
                     metadata: {
                         name: "ipv6-vpc-nat-eip-a"
@@ -148,7 +149,7 @@ _items = [
             assertResources: [
                 # VPC with explicit CIDR block (no IPAM)
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "VPC"
                     metadata: {
                         name: "manual-vpc"
@@ -161,7 +162,7 @@ _items = [
                 }
                 # NAT Gateway should exist (SingleAz)
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "NATGateway"
                     metadata: {
                         name: "manual-vpc-nat-a"
@@ -182,7 +183,7 @@ _items = [
             assertResources: [
                 # VPC
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "VPC"
                     metadata: {
                         name: "prod-vpc"
@@ -190,7 +191,7 @@ _items = [
                 }
                 # Transit Gateway attachment
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "TransitGatewayVPCAttachment"
                     metadata: {
                         name: "prod-vpc-tgw-attachment"
@@ -198,7 +199,7 @@ _items = [
                 }
                 # Flow logs
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "FlowLog"
                     metadata: {
                         name: "prod-vpc-flow-log"
@@ -206,21 +207,21 @@ _items = [
                 }
                 # HA NAT (3 gateways for 3 AZs)
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "NATGateway"
                     metadata: {
                         name: "prod-vpc-nat-a"
                     }
                 }
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "NATGateway"
                     metadata: {
                         name: "prod-vpc-nat-b"
                     }
                 }
                 {
-                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
                     kind: "NATGateway"
                     metadata: {
                         name: "prod-vpc-nat-c"

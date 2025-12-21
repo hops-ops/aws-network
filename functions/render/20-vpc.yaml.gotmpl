@@ -1,7 +1,7 @@
 # code: language=yaml
 
 ---
-apiVersion: ec2.aws.upbound.io/v1beta1
+apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: VPC
 metadata:
   name: {{ $networkName }}
@@ -52,4 +52,5 @@ spec:
     {{ toYaml . | nindent 4 }}
     {{- end }}
   providerConfigRef:
+    kind: ProviderConfig
     name: {{ $awsProviderConfig }}

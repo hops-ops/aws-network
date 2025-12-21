@@ -2,7 +2,7 @@
 
 {{- if $renderEgressOnlyIgw }}
 ---
-apiVersion: ec2.aws.upbound.io/v1beta1
+apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: EgressOnlyInternetGateway
 metadata:
   name: {{ $networkName }}
@@ -20,6 +20,7 @@ spec:
       {{ $awsTags | toYaml | nindent 6 }}
       Name: {{ $networkName }}
   providerConfigRef:
+    kind: ProviderConfig
     name: {{ $awsProviderConfig }}
 
 # Usage: VPC protects Egress-Only IGW
@@ -33,14 +34,41 @@ metadata:
     {{ setResourceNameAnnotation "usage-vpc-eigw" }}
 spec:
   of:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: VPC
     resourceRef:
       name: {{ $networkName }}
   by:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: EgressOnlyInternetGateway
     resourceRef:
       name: {{ $networkName }}
+{{- end }}
+
+# Private IPv6 routes to Egress-Only IGW (one per AZ)
+{{- range $azConfig := $azConfigs }}
+{{- with $azConfig.privateRouteTable }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: Route
+metadata:
+  name: {{ $networkName }}-private-{{ $azConfig.suffix }}-default-ipv6
+  annotations:
+    {{ setResourceNameAnnotation (printf "route-private-%s-default-ipv6" $azConfig.suffix) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    region: {{ $awsRegion }}
+    routeTableIdRef:
+      name: {{ .name }}
+    destinationIpv6CidrBlock: "::/0"
+    egressOnlyGatewayIdRef:
+      name: {{ $networkName }}
+  providerConfigRef:
+    kind: ProviderConfig
+    name: {{ $awsProviderConfig }}
+{{- end }}
 {{- end }}
 {{- end }}

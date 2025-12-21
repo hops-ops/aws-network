@@ -87,8 +87,25 @@ up composition render --xrd=... --observed-resources=examples/observed-resources
 
 ## Development Workflow
 
-- `make render` – render all examples.
-- `make validate` – run schema validation against the XRD and examples.
+**Prefer single-example validation** for faster iteration. Running `make render:all` or `make validate:all` is slow - use a late-stage observed-resources example instead:
+
+```bash
+# Fast iteration - validate single example with observed resources
+make validate:example-ipam-subnets-ondemand-step3
+
+# Or run manually with a late step
+up composition render --xrd=apis/networks/definition.yaml \
+  apis/networks/composition.yaml \
+  examples/networks/example-ipam-subnets-ondemand.yaml \
+  --observed-resources=examples/observed-resources/example-ipam-subnets-ondemand/steps/3/ \
+  --include-full-xr --quiet | crossplane beta validate apis/networks --error-on-missing-schemas -
+```
+
+Save `render:all` and `validate:all` for final verification before commits.
+
+**Available commands:**
+- `make render` – render all examples (slow).
+- `make validate` – run schema validation on all examples (slow).
 - `make test` – execute the regression suite.
 - `make e2e` – execute E2E tests.
 - `make render:example-minimal` – render a single example.

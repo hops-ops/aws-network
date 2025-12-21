@@ -3,7 +3,7 @@
 {{- if $renderNatGateways }}
 {{- range $natConfig := $natConfigsForCreation }}
 ---
-apiVersion: ec2.aws.upbound.io/v1beta1
+apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: EIP
 metadata:
   name: {{ $natConfig.eipName }}
@@ -20,9 +20,10 @@ spec:
       {{ $awsTags | toYaml | nindent 6 }}
       Name: {{ $natConfig.eipName }}
   providerConfigRef:
+    kind: ProviderConfig
     name: {{ $awsProviderConfig }}
 ---
-apiVersion: ec2.aws.upbound.io/v1beta1
+apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: NATGateway
 metadata:
   name: {{ $natConfig.name }}
@@ -43,6 +44,7 @@ spec:
       {{ $awsTags | toYaml | nindent 6 }}
       Name: {{ $natConfig.name }}
   providerConfigRef:
+    kind: ProviderConfig
     name: {{ $awsProviderConfig }}
 
 # Usages: Protect NAT Gateway dependencies
@@ -61,12 +63,12 @@ metadata:
     {{ setResourceNameAnnotation (printf "usage-%s-%s" $natConfig.publicSubnetResourceName $natConfig.resourceName) }}
 spec:
   of:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: Subnet
     resourceRef:
       name: {{ $natConfig.publicSubnet }}
   by:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: NATGateway
     resourceRef:
       name: {{ $natConfig.name }}
@@ -83,15 +85,42 @@ metadata:
     {{ setResourceNameAnnotation (printf "usage-%s-%s" $natConfig.eipResourceName $natConfig.resourceName) }}
 spec:
   of:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: EIP
     resourceRef:
       name: {{ $natConfig.eipName }}
   by:
-    apiVersion: ec2.aws.upbound.io/v1beta1
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: NATGateway
     resourceRef:
       name: {{ $natConfig.name }}
+{{- end }}
+{{- end }}
+
+# Private IPv4 routes to NAT Gateways (one per private route table)
+{{- range $azConfig := $azConfigs }}
+{{- with $azConfig.nat }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: Route
+metadata:
+  name: {{ $networkName }}-private-{{ $azConfig.suffix }}-default-ipv4
+  annotations:
+    {{ setResourceNameAnnotation (printf "route-private-%s-default-ipv4" $azConfig.suffix) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    region: {{ $awsRegion }}
+    routeTableIdRef:
+      name: {{ $azConfig.privateRouteTable.name }}
+    destinationCidrBlock: 0.0.0.0/0
+    natGatewayIdRef:
+      name: {{ .name }}
+  providerConfigRef:
+    kind: ProviderConfig
+    name: {{ $awsProviderConfig }}
 {{- end }}
 {{- end }}
 {{- end }}
