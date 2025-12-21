@@ -4,7 +4,7 @@ metadata:
   name: configuration-network
 spec:
   dependsOn:
-  - provider: xpkg.upbound.io/crossplane-contrib/provider-aws-ec2
-    version: ">=v2.2.0"
-  - function: xpkg.upbound.io/crossplane-contrib/function-auto-ready
-    version: ">=v0.5.1"
+  - provider: xpkg.crossplane.io/crossplane-contrib/provider-aws-ec2
+    version: ">=v2.3.0"
+  - function: xpkg.crossplane.io/crossplane-contrib/function-auto-ready
+    version: ">=v0.6.0"

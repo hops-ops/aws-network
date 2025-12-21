@@ -120,3 +120,26 @@ Document behavioural changes in `README.md` and refresh `examples/` whenever the
 3. **IPv6 Native**: Dual-stack with Amazon-provided or IPAM /56 blocks
 4. **No NAT by Default**: Encourages IPv6 egress + load balancers instead of NAT cost
 5. **Flexible NAT Strategies**: SingleAz (dev/test), HighlyAvailable (production), None
+
+## Crossplane 2 Requirements
+
+**Always use `.m.` API versions** for managed resources. Namespaced XRs require namespaced composed resources:
+
+```yaml
+# CORRECT
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPC
+
+# WRONG - will fail with "cannot apply cluster scoped composed resource for a namespaced composite resource"
+apiVersion: ec2.aws.upbound.io/v1beta1
+kind: VPC
+```
+
+**Always include `kind` in `providerConfigRef`:**
+
+```yaml
+spec:
+  providerConfigRef:
+    kind: ProviderConfig
+    name: {{ $awsProviderConfig }}
+```
