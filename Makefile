@@ -24,6 +24,8 @@ EXAMPLES := \
     examples/networks/example-ipam-subnets-ondemand.yaml::examples/observed-resources/example-ipam-subnets-ondemand/steps/2 \
     examples/networks/example-ipam-subnets-ondemand.yaml::examples/observed-resources/example-ipam-subnets-ondemand/steps/3
 
+.PHONY: clean build render validate test e2e publish generate-definitions generate-function
+
 clean:
 	rm -rf _output
 	rm -rf .up
@@ -32,7 +34,7 @@ build:
 	up project build
 
 # Render all examples
-render\:all:
+render:
 	@for entry in $(EXAMPLES); do \
 		example=$${entry%%::*}; \
 		observed=$${entry#*::}; \
@@ -47,7 +49,7 @@ render\:all:
 	done
 
 # Validate all examples
-validate\:all:
+validate:
 	@for entry in $(EXAMPLES); do \
 		example=$${entry%%::*}; \
 		observed=$${entry#*::}; \
@@ -64,10 +66,6 @@ validate\:all:
 		fi; \
 		echo ""; \
 	done
-
-# Shorthand aliases
-render: render\:all
-validate: validate\:all
 
 # Single example render (usage: make render:example-minimal)
 render\:%:

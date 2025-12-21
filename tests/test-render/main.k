@@ -1,154 +1,234 @@
-import dev.meta.v1 as meta
+import models.io.upbound.dev.meta.v1alpha1 as metav1alpha1
 
-# Test minimal network rendering
-test_network_minimal = meta.CompositionTest {
-    metadata.name = "test-network-minimal"
-    spec = {
-        compositionPath = "../../apis/networks/composition.yaml"
-        xrPath = "../../examples/networks/example-minimal.yaml"
-        timeoutSeconds = 60
-        assertResources = [
-            # VPC should be created with IPAM pool selector
-            {
-                name = "vpc"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "VPC"
-                    metadata.name = "my-vpc-vpc"
-                    spec = {
-                        forProvider = {
-                            region = "us-east-1"
-                            enableDnsHostnames = True
-                            enableDnsSupport = True
-                        }
-                        providerConfigRef.name = "my-cluster"
+_items = [
+    # Test minimal network rendering (no NAT, dual-stack with Amazon IPv6)
+    metav1alpha1.CompositionTest {
+        metadata.name: "test-network-minimal"
+        spec: {
+            compositionPath: "apis/networks/composition.yaml"
+            xrPath: "examples/networks/example-minimal.yaml"
+            xrdPath: "apis/networks/definition.yaml"
+            timeoutSeconds: 60
+            validate: True
+            assertResources: [
+                # VPC should be created with IPAM pool selector and IPv6
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "VPC"
+                    metadata: {
+                        name: "my-vpc"
                     }
-                }
-            }
-            # Public subnet should be created
-            {
-                name = "subnet-public-a"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "Subnet"
-                    spec = {
-                        forProvider = {
-                            region = "us-east-1"
-                            mapPublicIpOnLaunch = True
+                    spec: {
+                        forProvider: {
+                            region: "us-east-1"
+                            enableDnsHostnames: True
+                            enableDnsSupport: True
+                            assignGeneratedIpv6CidrBlock: True
+                        }
+                        providerConfigRef: {
+                            name: "my-cluster"
                         }
                     }
                 }
-            }
-            # Private subnet should be created
-            {
-                name = "subnet-private-a"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "Subnet"
-                    spec = {
-                        forProvider = {
-                            region = "us-east-1"
-                            mapPublicIpOnLaunch = False
+                # Internet Gateway for public subnets
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "InternetGateway"
+                    metadata: {
+                        name: "my-vpc"
+                    }
+                }
+                # Egress-only IGW for IPv6 private egress
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "EgressOnlyInternetGateway"
+                    metadata: {
+                        name: "my-vpc"
+                    }
+                }
+                # Public route table
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "RouteTable"
+                    metadata: {
+                        name: "my-vpc-public"
+                    }
+                }
+            ]
+        }
+    },
+    # Test private-only network (no public subnets, no IGW, no NAT)
+    metav1alpha1.CompositionTest {
+        metadata.name: "test-network-private-only"
+        spec: {
+            compositionPath: "apis/networks/composition.yaml"
+            xrPath: "examples/networks/example-private-only.yaml"
+            xrdPath: "apis/networks/definition.yaml"
+            timeoutSeconds: 60
+            validate: True
+            assertResources: [
+                # VPC should be created
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "VPC"
+                    metadata: {
+                        name: "isolated-vpc"
+                    }
+                }
+                # Private route tables should exist
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "RouteTable"
+                    metadata: {
+                        name: "isolated-vpc-private-rt-a"
+                    }
+                }
+            ]
+        }
+    },
+    # Test dual-stack network with NAT
+    metav1alpha1.CompositionTest {
+        metadata.name: "test-network-dual-stack"
+        spec: {
+            compositionPath: "apis/networks/composition.yaml"
+            xrPath: "examples/networks/example-dual-stack.yaml"
+            xrdPath: "apis/networks/definition.yaml"
+            timeoutSeconds: 60
+            validate: True
+            assertResources: [
+                # VPC with IPv6 enabled
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "VPC"
+                    metadata: {
+                        name: "ipv6-vpc"
+                    }
+                    spec: {
+                        forProvider: {
+                            assignGeneratedIpv6CidrBlock: True
                         }
                     }
                 }
-            }
-            # Internet Gateway should be created
-            {
-                name = "internet-gateway"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "InternetGateway"
+                # Egress-only IGW for IPv6 private egress
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "EgressOnlyInternetGateway"
+                    metadata: {
+                        name: "ipv6-vpc"
+                    }
                 }
-            }
-            # NAT Gateway should be created (SingleAz strategy)
-            {
-                name = "nat-a"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "NATGateway"
+                # NAT Gateway (SingleAz by default)
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "NATGateway"
+                    metadata: {
+                        name: "ipv6-vpc-nat-a"
+                    }
                 }
-            }
-        ]
+                # EIP for NAT
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "EIP"
+                    metadata: {
+                        name: "ipv6-vpc-nat-eip-a"
+                    }
+                }
+            ]
+        }
+    },
+    # Test manual CIDR network
+    metav1alpha1.CompositionTest {
+        metadata.name: "test-network-manual-cidr"
+        spec: {
+            compositionPath: "apis/networks/composition.yaml"
+            xrPath: "examples/networks/example-manual-cidr.yaml"
+            xrdPath: "apis/networks/definition.yaml"
+            timeoutSeconds: 60
+            validate: True
+            assertResources: [
+                # VPC with explicit CIDR block (no IPAM)
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "VPC"
+                    metadata: {
+                        name: "manual-vpc"
+                    }
+                    spec: {
+                        forProvider: {
+                            cidrBlock: "172.16.0.0/16"
+                        }
+                    }
+                }
+                # NAT Gateway should exist (SingleAz)
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "NATGateway"
+                    metadata: {
+                        name: "manual-vpc-nat-a"
+                    }
+                }
+            ]
+        }
+    },
+    # Test enterprise network with Transit Gateway and Flow Logs
+    metav1alpha1.CompositionTest {
+        metadata.name: "test-network-enterprise"
+        spec: {
+            compositionPath: "apis/networks/composition.yaml"
+            xrPath: "examples/networks/example-enterprise.yaml"
+            xrdPath: "apis/networks/definition.yaml"
+            timeoutSeconds: 60
+            validate: True
+            assertResources: [
+                # VPC
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "VPC"
+                    metadata: {
+                        name: "prod-vpc"
+                    }
+                }
+                # Transit Gateway attachment
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "TransitGatewayVPCAttachment"
+                    metadata: {
+                        name: "prod-vpc-tgw-attachment"
+                    }
+                }
+                # Flow logs
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "FlowLog"
+                    metadata: {
+                        name: "prod-vpc-flow-log"
+                    }
+                }
+                # HA NAT (3 gateways for 3 AZs)
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "NATGateway"
+                    metadata: {
+                        name: "prod-vpc-nat-a"
+                    }
+                }
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "NATGateway"
+                    metadata: {
+                        name: "prod-vpc-nat-b"
+                    }
+                }
+                {
+                    apiVersion: "ec2.aws.upbound.io/v1beta1"
+                    kind: "NATGateway"
+                    metadata: {
+                        name: "prod-vpc-nat-c"
+                    }
+                }
+            ]
+        }
     }
-}
+]
 
-# Test private-only network (no public subnets, no NAT)
-test_network_private_only = meta.CompositionTest {
-    metadata.name = "test-network-private-only"
-    spec = {
-        compositionPath = "../../apis/networks/composition.yaml"
-        xrPath = "../../examples/networks/example-private-only.yaml"
-        timeoutSeconds = 60
-        assertResources = [
-            # VPC should be created
-            {
-                name = "vpc"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "VPC"
-                }
-            }
-            # Private subnet should be created
-            {
-                name = "subnet-private-a"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "Subnet"
-                    spec = {
-                        forProvider = {
-                            mapPublicIpOnLaunch = False
-                        }
-                    }
-                }
-            }
-        ]
-        # These should NOT exist for private-only
-        assertNotExist = [
-            "internet-gateway"
-            "nat-a"
-            "subnet-public-a"
-        ]
-    }
-}
-
-# Test dual-stack network
-test_network_dual_stack = meta.CompositionTest {
-    metadata.name = "test-network-dual-stack"
-    spec = {
-        compositionPath = "../../apis/networks/composition.yaml"
-        xrPath = "../../examples/networks/example-dual-stack.yaml"
-        timeoutSeconds = 60
-        assertResources = [
-            # VPC should be created
-            {
-                name = "vpc"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "VPC"
-                }
-            }
-            # IPv6 CIDR association should be created
-            {
-                name = "vpc-ipv6-cidr"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "VPCIpv6CIDRBlockAssociation"
-                    spec = {
-                        forProvider = {
-                            amazonProvidedIpv6CidrBlock = True
-                        }
-                    }
-                }
-            }
-            # Egress-only IGW should be created for IPv6 private subnets
-            {
-                name = "egress-only-igw"
-                resource = {
-                    apiVersion = "ec2.aws.upbound.io/v1beta1"
-                    kind = "EgressOnlyInternetGateway"
-                }
-            }
-        ]
-    }
-}
+items = _items
