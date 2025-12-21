@@ -12,19 +12,21 @@
 # Determine IPv4 allocation mode
 {{ $useIpv4Ipam := false }}
 {{ $useIpv4Manual := false }}
+{{ $ipv4IpamPoolId := $ipv4Ipam.poolId | default "" }}
+{{ $ipv4IpamNetmaskLength := $ipv4Ipam.netmaskLength }}
 {{ $ipv4IpamPoolRef := $ipv4Ipam.poolRef | default (dict) }}
 {{ $ipv4IpamPoolRefName := $ipv4IpamPoolRef.name | default "" }}
 {{ $ipv4IpamGlobalPoolName := $ipv4Ipam.globalPoolName | default "" }}
 {{ $ipv4IpamPoolSelector := $ipv4Ipam.poolSelector | default (dict) }}
 {{ $ipv4IpamPoolSelectorLabels := $ipv4IpamPoolSelector.matchLabels | default (dict) }}
 
-# Build IPAM pool selector for IPv4
-{{ if $ipv4IpamGlobalPoolName }}
+# Build IPAM pool selector for IPv4 (only if no poolId or poolRef specified)
+{{ if and (not $ipv4IpamPoolId) (not $ipv4IpamPoolRefName) $ipv4IpamGlobalPoolName }}
   {{- $_ := set $ipv4IpamPoolSelectorLabels "hops.ops.com.ai/global-pool" $ipv4IpamGlobalPoolName }}
 {{ end }}
 {{ $ipv4IpamSelectorHasLabels := gt (len (keys $ipv4IpamPoolSelectorLabels)) 0 }}
 
-{{ if or $ipv4IpamPoolRefName $ipv4IpamSelectorHasLabels }}
+{{ if or $ipv4IpamPoolId $ipv4IpamPoolRefName $ipv4IpamSelectorHasLabels }}
   {{- $useIpv4Ipam = true }}
 {{ else if $ipv4Manual.vpcCidr }}
   {{- $useIpv4Manual = true }}
@@ -41,14 +43,16 @@
 {{ $ipv6Enabled := $ipv6.enabled | default false }}
 {{ $ipv6AmazonProvided := $ipv6.amazonProvided | default false }}
 {{ $ipv6Ipam := $ipv6.ipam | default (dict) }}
+{{ $ipv6IpamPoolId := $ipv6Ipam.poolId | default "" }}
+{{ $ipv6IpamNetmaskLength := $ipv6Ipam.netmaskLength }}
 {{ $ipv6IpamPoolRef := $ipv6Ipam.poolRef | default (dict) }}
 {{ $ipv6IpamPoolRefName := $ipv6IpamPoolRef.name | default "" }}
 {{ $ipv6IpamGlobalPoolName := $ipv6Ipam.globalPoolName | default "" }}
 {{ $ipv6IpamPoolSelector := $ipv6Ipam.poolSelector | default (dict) }}
 {{ $ipv6IpamPoolSelectorLabels := $ipv6IpamPoolSelector.matchLabels | default (dict) }}
 
-# Build IPAM pool selector for IPv6
-{{ if $ipv6IpamGlobalPoolName }}
+# Build IPAM pool selector for IPv6 (only if no poolId or poolRef specified)
+{{ if and (not $ipv6IpamPoolId) (not $ipv6IpamPoolRefName) $ipv6IpamGlobalPoolName }}
   {{- $_ := set $ipv6IpamPoolSelectorLabels "hops.ops.com.ai/global-pool" $ipv6IpamGlobalPoolName }}
 {{ end }}
 {{ $ipv6IpamSelectorHasLabels := gt (len (keys $ipv6IpamPoolSelectorLabels)) 0 }}
@@ -57,7 +61,7 @@
 {{ $useIpv6Ipam := false }}
 {{ $useIpv6AmazonProvided := false }}
 {{ if $ipv6Enabled }}
-  {{ if or $ipv6IpamPoolRefName $ipv6IpamSelectorHasLabels }}
+  {{ if or $ipv6IpamPoolId $ipv6IpamPoolRefName $ipv6IpamSelectorHasLabels }}
     {{- $useIpv6Ipam = true }}
   {{ else if $ipv6AmazonProvided }}
     {{- $useIpv6AmazonProvided = true }}

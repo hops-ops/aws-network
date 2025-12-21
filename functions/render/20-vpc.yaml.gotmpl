@@ -16,30 +16,33 @@ spec:
     enableDnsHostnames: {{ $enableDnsHostnames }}
     enableDnsSupport: {{ $enableDnsSupport }}
     {{- if $useIpv4Ipam }}
-    ipv4IpamPoolId: ""
-    ipv4NetmaskLength: 16
+    {{- if $ipv4IpamNetmaskLength }}
+    ipv4NetmaskLength: {{ $ipv4IpamNetmaskLength }}
+    {{- end }}
+    {{- if $ipv4IpamPoolId }}
+    ipv4IpamPoolId: {{ $ipv4IpamPoolId }}
+    {{- end }}
     {{- if $ipv4IpamPoolRefName }}
     ipv4IpamPoolIdRef:
       name: {{ $ipv4IpamPoolRefName }}
-    {{- else if $ipv4IpamSelectorHasLabels }}
+    {{- end }}
+    {{- if $ipv4IpamSelectorHasLabels }}
     ipv4IpamPoolIdSelector:
       matchLabels:
         {{ $ipv4IpamPoolSelectorLabels | toYaml | nindent 8 }}
     {{- end }}
     {{- else if $useIpv4Manual }}
     cidrBlock: {{ $manualVpcCidr }}
-    {{- else }}
-    # Fallback - should not reach here
-    cidrBlock: 10.0.0.0/16
     {{- end }}
     {{- if $useIpv6AmazonProvided }}
     assignGeneratedIpv6CidrBlock: true
     {{- else if $useIpv6Ipam }}
-    ipv6IpamPoolId: ""
-    ipv6NetmaskLength: 56
-    {{- if $ipv6IpamPoolRefName }}
-    ipv6IpamPoolIdRef:
-      name: {{ $ipv6IpamPoolRefName }}
+    {{- /* Note: AWS VPC only supports ipv6IpamPoolId - no ref/selector variants */}}
+    {{- if $ipv6IpamNetmaskLength }}
+    ipv6NetmaskLength: {{ $ipv6IpamNetmaskLength }}
+    {{- end }}
+    {{- if $ipv6IpamPoolId }}
+    ipv6IpamPoolId: {{ $ipv6IpamPoolId }}
     {{- end }}
     {{- end }}
     tags:

@@ -14,6 +14,7 @@ EXAMPLES := \
     examples/networks/example-minimal.yaml:: \
     examples/networks/example-minimal.yaml::examples/observed-resources/example-minimal/steps/1 \
     examples/networks/example-dual-stack.yaml:: \
+    examples/networks/example-e2e.yaml:: \
     examples/networks/example-enterprise.yaml:: \
     examples/networks/example-manual-cidr.yaml:: \
     examples/networks/example-private-only.yaml:: \

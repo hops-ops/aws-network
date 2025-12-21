@@ -25,10 +25,14 @@ spec:
     allocationMinNetmaskLength: {{ $netmaskLength }}
     allocationMaxNetmaskLength: {{ $netmaskLength }}
     {{- /* Reference parent VPC pool */}}
+    {{- if $ipv4IpamPoolId }}
+    sourceIpamPoolId: {{ $ipv4IpamPoolId }}
+    {{- end }}
     {{- if $ipv4IpamPoolRefName }}
     sourceIpamPoolIdRef:
       name: {{ $ipv4IpamPoolRefName }}
-    {{- else if $ipv4IpamSelectorHasLabels }}
+    {{- end }}
+    {{- if $ipv4IpamSelectorHasLabels }}
     sourceIpamPoolIdSelector:
       matchLabels:
         {{ $ipv4IpamPoolSelectorLabels | toYaml | nindent 8 }}

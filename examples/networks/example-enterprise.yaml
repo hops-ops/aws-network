@@ -23,8 +23,7 @@ spec:
         globalPoolName: customer-prod
     ipv6:
       enabled: true
-      ipam:
-        globalPoolName: ipv6-public
+      amazonProvided: true  # Most common for enterprise - IPAM IPv6 requires poolId directly
     mode: dual-stack
 
   subnets:

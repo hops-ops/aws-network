@@ -84,8 +84,15 @@ spec:
                     properties:
                       ipam:
                         type: object
-                        description: IPAM-based allocation (recommended).
+                        description: |
+                          IPAM-based allocation (recommended). Use a PRIVATE scope IPAM pool
+                          for IPv4 VPC allocation.
                         properties:
+                          poolId:
+                            type: string
+                            description: |
+                              Direct IPAM pool ID (e.g., ipam-pool-0a82c73b97dc0dabb).
+                              Must be a PRIVATE scope pool for IPv4.
                           poolRef:
                             type: object
                             description: Reference to IPAM pool resource.
@@ -105,6 +112,13 @@ spec:
                                 type: object
                                 additionalProperties:
                                   type: string
+                          netmaskLength:
+                            type: integer
+                            description: |
+                              Netmask length for VPC CIDR allocation from IPAM pool.
+                              If omitted, uses the pool's default netmask length.
+                            minimum: 16
+                            maximum: 28
                       manual:
                         type: object
                         description: Manual CIDR allocation (fallback when no IPAM).
@@ -154,25 +168,25 @@ spec:
                         default: false
                       ipam:
                         type: object
-                        description: IPAM-based IPv6 allocation.
+                        description: |
+                          IPAM-based IPv6 allocation. Use a PUBLIC scope pool for globally
+                          routable addresses or PRIVATE scope for ULA.
+                          NOTE: AWS VPC only supports direct poolId for IPv6 - no ref/selector.
                         properties:
-                          poolRef:
-                            type: object
-                            properties:
-                              name:
-                                type: string
-                              namespace:
-                                type: string
-                          globalPoolName:
+                          poolId:
                             type: string
-                            description: Name of global IPv6 IPAM pool.
-                          poolSelector:
-                            type: object
-                            properties:
-                              matchLabels:
-                                type: object
-                                additionalProperties:
-                                  type: string
+                            description: |
+                              Direct IPv6 IPAM pool ID (required for IPv6 IPAM).
+                              Use PUBLIC scope for internet-routable addresses or
+                              PRIVATE scope for ULA (Unique Local Addresses).
+                          netmaskLength:
+                            type: integer
+                            description: |
+                              Netmask length for IPv6 CIDR allocation from IPAM pool.
+                              If omitted, uses the pool's default netmask length.
+                              Valid values: 44-60 in increments of 4.
+                            minimum: 44
+                            maximum: 60
                   mode:
                     type: string
                     description: Address mode for subnets.
