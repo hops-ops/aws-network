@@ -6,7 +6,7 @@ _items = [
         metadata.name: "test-network-minimal"
         spec: {
             compositionPath: "apis/networks/composition.yaml"
-            xrPath: "examples/networks/example-minimal.yaml"
+            xrPath: "examples/networks/minimal.yaml"
             xrdPath: "apis/networks/definition.yaml"
             timeoutSeconds: 60
             validate: True
@@ -63,7 +63,7 @@ _items = [
         metadata.name: "test-network-private-only"
         spec: {
             compositionPath: "apis/networks/composition.yaml"
-            xrPath: "examples/networks/example-private-only.yaml"
+            xrPath: "examples/networks/private-only.yaml"
             xrdPath: "apis/networks/definition.yaml"
             timeoutSeconds: 60
             validate: True
@@ -92,7 +92,7 @@ _items = [
         metadata.name: "test-network-dual-stack"
         spec: {
             compositionPath: "apis/networks/composition.yaml"
-            xrPath: "examples/networks/example-dual-stack.yaml"
+            xrPath: "examples/networks/dual-stack.yaml"
             xrdPath: "apis/networks/definition.yaml"
             timeoutSeconds: 60
             validate: True
@@ -142,7 +142,7 @@ _items = [
         metadata.name: "test-network-manual-cidr"
         spec: {
             compositionPath: "apis/networks/composition.yaml"
-            xrPath: "examples/networks/example-manual-cidr.yaml"
+            xrPath: "examples/networks/manual-cidr.yaml"
             xrdPath: "apis/networks/definition.yaml"
             timeoutSeconds: 60
             validate: True
@@ -176,7 +176,7 @@ _items = [
         metadata.name: "test-network-enterprise"
         spec: {
             compositionPath: "apis/networks/composition.yaml"
-            xrPath: "examples/networks/example-enterprise.yaml"
+            xrPath: "examples/networks/enterprise.yaml"
             xrdPath: "apis/networks/definition.yaml"
             timeoutSeconds: 60
             validate: True
