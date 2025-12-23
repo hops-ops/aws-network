@@ -6,7 +6,7 @@
 # - IPv6 via IPAM poolId (PRIVATE scope ULA pool)
 # - Dual-stack mode
 # - Public and private subnets
-# - On-demand subnet IPAM pool
+# - Subnet CIDRs from IPAM subnet pool
 apiVersion: aws.hops.ops.com.ai/v1alpha1
 kind: Network
 metadata:
@@ -23,6 +23,10 @@ spec:
     ipv4:
       ipam:
         poolId: ipam-pool-0a82c73b97dc0dabb
+        subnetPool:
+          enabled: true
+          poolId: ipam-pool-0eac78aa2a229f757
+          netmaskLength: 24
     ipv6:
       enabled: true
       ipam:
@@ -32,10 +36,6 @@ spec:
     availabilityZones:
       - a
       - b
-    privateNetmaskLength: 24
-    publicNetmaskLength: 26
     types:
       - private
       - public
-    ipam:
-      enabled: true

@@ -2,13 +2,13 @@
 
 # Public Subnets
 # CIDR sources (in priority order):
-# 1. Subnet IPAM allocation (subnets.ipam.enabled) - from VPCIpamPoolCidrAllocation
+# 1. Subnet pool allocation (cidr.ipv4.ipam.subnetPool.enabled) - from VPCIpamPoolCidrAllocation
 # 2. Calculated from VPC CIDR (cidr.ipv4.ipam) - deterministic math
 # 3. Manual (cidr.ipv4.manual) - explicit user-provided CIDRs
 {{- range $azConfig := $azConfigs }}
 {{- with $azConfig.public }}
 {{- $subnetCidr := "" }}
-{{- if $useSubnetIpam }}
+{{- if $useSubnetPool }}
   {{- $subnetCidr = get $allocatedSubnetCidrs .resourceName }}
 {{- else if $useIpv4Ipam }}
   {{- $subnetCidr = get $calculatedSubnetCidrs .resourceName }}
@@ -19,7 +19,7 @@
     {{- end }}
   {{- end }}
 {{- end }}
-{{- $needsIpamCidr := or $useSubnetIpam $useIpv4Ipam }}
+{{- $needsIpamCidr := or $useSubnetPool $useIpv4Ipam }}
 {{- if or (not $needsIpamCidr) $subnetCidr }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
@@ -79,7 +79,7 @@ spec:
 {{- range $azConfig := $azConfigs }}
 {{- with $azConfig.private }}
 {{- $subnetCidr := "" }}
-{{- if $useSubnetIpam }}
+{{- if $useSubnetPool }}
   {{- $subnetCidr = get $allocatedSubnetCidrs .resourceName }}
 {{- else if $useIpv4Ipam }}
   {{- $subnetCidr = get $calculatedSubnetCidrs .resourceName }}
@@ -90,7 +90,7 @@ spec:
     {{- end }}
   {{- end }}
 {{- end }}
-{{- $needsIpamCidr := or $useSubnetIpam $useIpv4Ipam }}
+{{- $needsIpamCidr := or $useSubnetPool $useIpv4Ipam }}
 {{- if or (not $needsIpamCidr) $subnetCidr }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1

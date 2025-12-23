@@ -124,8 +124,8 @@
 {{ $allocatedSubnetCidrs := dict }}
 {{ $subnetCidrAllocationsReady := dict }}
 
-# Extract CIDRs from VPCIpamPoolCidrAllocation resources (when subnets.ipam.enabled)
-{{ if $useSubnetIpam }}
+# Extract CIDRs from VPCIpamPoolCidrAllocation resources (when subnetPool.enabled)
+{{ if $useSubnetPool }}
   {{ range $azConfig := $azConfigs }}
     {{ with $azConfig.public }}
       {{ $allocResourceName := printf "cidr-alloc-%s" .resourceName }}
@@ -176,7 +176,7 @@
 {{ $calculatedSubnetCidrs := dict }}
 {{ $canCalculateSubnetCidrs := false }}
 
-{{ if and $useIpv4Ipam (not $useSubnetIpam) $observedVpcCidr }}
+{{ if and $useIpv4Ipam (not $useSubnetPool) $observedVpcCidr }}
   {{ $vpcCidrParts := splitList "/" $observedVpcCidr }}
   {{ if eq (len $vpcCidrParts) 2 }}
     {{ $vpcNetwork := index $vpcCidrParts 0 }}

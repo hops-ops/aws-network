@@ -1,20 +1,17 @@
-# IPAM Subnet Allocation - Strict central control use case
+# IPAM Subnet Pool Allocation
 # Creates VPC with subnet CIDRs allocated from a dedicated IPAM pool
 # instead of being calculated from VPC CIDR
 #
 # Prerequisites:
-# 1. IPAM with VPC pool (e.g., globalPoolName: sandbox)
-# 2. IPAM with subnet pool (e.g., globalPoolName: sandbox-subnets)
-#    - allocationDefaultNetmaskLength: 24 (or match subnets.netmaskLength)
+# 1. IPAM with VPC pool (globalPoolName: sandbox)
+# 2. IPAM with subnet pool (globalPoolName: sandbox-subnets)
+#    - Created by aws-ipam module with convention: ${globalPoolName}-subnets
+#    - allocationDefaultNetmaskLength should match subnetPool.netmaskLength
 #
 # Benefits:
 # - Stricter central control over subnet CIDR assignments
 # - IPAM tracks all allocations including subnets (not just VPCs)
 # - Better visibility into IP space usage at subnet granularity
-#
-# Trade-offs:
-# - Multi-step reconciliation (allocations must be Ready before subnets)
-# - More IPAM pool management overhead
 apiVersion: aws.hops.ops.com.ai/v1alpha1
 kind: Network
 metadata:
@@ -30,20 +27,18 @@ spec:
       ipam:
         # VPC CIDR from this pool (e.g., gets a /16)
         globalPoolName: sandbox
+        # Subnet CIDRs from sandbox-subnets pool (convention: ${globalPoolName}-subnets)
+        subnetPool:
+          enabled: true
+          netmaskLength: 24
     mode: ipv4-only
   subnets:
     availabilityZones:
       - a
       - b
       - c
-    netmaskLength: 24  # Each subnet gets /24 from the subnet pool
     types:
       - public
       - private
-    ipam:
-      enabled: true
-      # Subnet CIDRs from this pool (child of VPC pool)
-      # Pool should have allocationDefaultNetmaskLength: 24
-      globalPoolName: sandbox-subnets
   nat:
     enabled: false

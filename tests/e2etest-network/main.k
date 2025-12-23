@@ -16,6 +16,8 @@ _base64_creds = base64.encode(_creds)
 # IPAM Pools - persistent infrastructure from aws-ipam e2e test
 _ipv4_private_pool_id = "ipam-pool-0a82c73b97dc0dabb"
 _ipv6_private_pool_id = "ipam-pool-0decd6c5216660c74"
+_ipv4_subnet_pool_id = "ipam-pool-0eac78aa2a229f757"
+_ipv6_subnet_pool_id = "ipam-pool-0888a212e86abbf13"
 
 # =============================================================================
 # Dynamic test resources - timestamped to allow concurrent test runs
@@ -52,24 +54,27 @@ _items = [
                             ipv4: {
                                 ipam: {
                                     poolId: _ipv4_private_pool_id
+                                    subnetPool: {
+                                        enabled: True
+                                        poolId: _ipv4_subnet_pool_id
+                                    }
                                 }
                             }
                             ipv6: {
                                 enabled: True
                                 ipam: {
                                     poolId: _ipv6_private_pool_id
+                                    subnetPool: {
+                                        enabled: True
+                                        poolId: _ipv6_subnet_pool_id
+                                    }
                                 }
                             }
                             mode: "dual-stack"
                         }
                         subnets: {
                             availabilityZones: ["a", "b"]
-                            privateNetmaskLength: 24
-                            publicNetmaskLength: 26
                             types: ["private", "public"]
-                            ipam: {
-                                enabled: True
-                            }
                         }
                     }
                 }

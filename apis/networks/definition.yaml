@@ -119,6 +119,35 @@ spec:
                               If omitted, uses the pool's default netmask length.
                             minimum: 16
                             maximum: 28
+                          subnetPool:
+                            type: object
+                            description: |
+                              Subnet CIDR allocation from IPAM pool. When enabled, allocates
+                              subnet CIDRs from a dedicated subnet pool instead of calculating
+                              from VPC CIDR.
+
+                              Pool selection (in priority order):
+                              1. poolId - direct IPAM pool ID
+                              2. globalPoolName convention - ${globalPoolName}-subnets
+
+                              The subnet pool must be pre-configured by aws-ipam.
+                            properties:
+                              enabled:
+                                type: boolean
+                                description: Enable subnet CIDR allocation from IPAM pool.
+                                default: false
+                              poolId:
+                                type: string
+                                description: |
+                                  Direct IPAM pool ID for subnet allocations (e.g., ipam-pool-xxx).
+                                  Takes precedence over globalPoolName convention.
+                              netmaskLength:
+                                type: integer
+                                description: |
+                                  Netmask length for subnet CIDR allocations. Must match the
+                                  allocationDefaultNetmaskLength configured on the subnet pool.
+                                minimum: 16
+                                maximum: 28
                       manual:
                         type: object
                         description: Manual CIDR allocation (fallback when no IPAM).
@@ -243,40 +272,6 @@ spec:
                     default:
                     - public
                     - private
-                  ipam:
-                    type: object
-                    description: |
-                      IPAM-based subnet CIDR allocation. When enabled, allocates subnet CIDRs from
-                      a dedicated subnet pool instead of calculating from VPC CIDR.
-
-                      Two modes:
-                      1. Reference existing pool: Set globalPoolName/poolRef/poolSelector
-                      2. Create on-demand: Omit pool reference - creates child pool from VPC's IPAM pool
-                    properties:
-                      enabled:
-                        type: boolean
-                        description: Enable IPAM allocation for subnet CIDRs. When false (default), subnet CIDRs are calculated from VPC CIDR.
-                        default: false
-                      poolRef:
-                        type: object
-                        description: Direct reference to existing subnet IPAM pool resource.
-                        properties:
-                          name:
-                            type: string
-                          namespace:
-                            type: string
-                      globalPoolName:
-                        type: string
-                        description: Name of existing global subnet IPAM pool (selects via hops.ops.com.ai/global-pool label).
-                      poolSelector:
-                        type: object
-                        description: Custom label selector for existing subnet IPAM pool.
-                        properties:
-                          matchLabels:
-                            type: object
-                            additionalProperties:
-                              type: string
-
               # NAT Gateway Strategy
               nat:
                 type: object

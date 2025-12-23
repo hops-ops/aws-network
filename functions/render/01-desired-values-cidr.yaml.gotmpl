@@ -81,5 +81,12 @@
 {{ $hasIpv4 := or (eq $cidrMode "ipv4-only") $isDualStack }}
 {{ $hasIpv6 := or $isDualStack $isIpv6Only }}
 
-# On-demand subnet pool: subnet IPAM enabled + VPC uses IPAM + no existing pool referenced
-{{ $createOnDemandSubnetPool := and $useSubnetIpam $useIpv4Ipam (not $hasExistingSubnetPool) }}
+# Subnet pool configuration (from cidr.ipv4.ipam.subnetPool)
+{{ $ipv4SubnetPool := $ipv4Ipam.subnetPool | default (dict) }}
+{{ $useSubnetPool := $ipv4SubnetPool.enabled | default false }}
+{{ $subnetPoolNetmaskLength := $ipv4SubnetPool.netmaskLength }}
+{{ $subnetPoolId := $ipv4SubnetPool.poolId | default "" }}
+{{ $subnetPoolName := "" }}
+{{ if and $useSubnetPool (not $subnetPoolId) $ipv4IpamGlobalPoolName }}
+  {{ $subnetPoolName = printf "%s-subnets" $ipv4IpamGlobalPoolName }}
+{{ end }}

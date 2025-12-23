@@ -19,11 +19,7 @@ EXAMPLES := \
     examples/networks/example-manual-cidr.yaml:: \
     examples/networks/example-private-only.yaml:: \
     examples/networks/example-ipam-subnets.yaml:: \
-    examples/networks/example-ipam-subnets.yaml::examples/observed-resources/example-ipam-subnets/steps/1 \
-    examples/networks/example-ipam-subnets-ondemand.yaml:: \
-    examples/networks/example-ipam-subnets-ondemand.yaml::examples/observed-resources/example-ipam-subnets-ondemand/steps/1 \
-    examples/networks/example-ipam-subnets-ondemand.yaml::examples/observed-resources/example-ipam-subnets-ondemand/steps/2 \
-    examples/networks/example-ipam-subnets-ondemand.yaml::examples/observed-resources/example-ipam-subnets-ondemand/steps/3
+    examples/networks/example-ipam-subnets.yaml::examples/observed-resources/example-ipam-subnets/steps/1
 
 .PHONY: clean build render validate test e2e publish generate-definitions generate-function
 

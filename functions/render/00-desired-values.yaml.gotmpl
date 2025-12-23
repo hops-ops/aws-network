@@ -37,24 +37,6 @@
 {{ $ipv6NetmaskLength := $subnets.ipv6NetmaskLength | default 64 }}
 {{ $subnetTypes := $subnets.types | default (list "public" "private") }}
 
-# Subnet IPAM configuration (allocates CIDRs from dedicated pool instead of calculating)
-{{ $subnetIpam := $subnets.ipam | default (dict) }}
-{{ $useSubnetIpam := $subnetIpam.enabled | default false }}
-{{ $subnetIpamPoolRef := $subnetIpam.poolRef | default (dict) }}
-{{ $subnetIpamPoolRefName := $subnetIpamPoolRef.name | default "" }}
-{{ $subnetIpamGlobalPoolName := $subnetIpam.globalPoolName | default "" }}
-{{ $subnetIpamPoolSelector := $subnetIpam.poolSelector | default (dict) }}
-{{ $subnetIpamPoolSelectorLabels := $subnetIpamPoolSelector.matchLabels | default (dict) }}
-
-# Build subnet IPAM pool selector
-{{ if $subnetIpamGlobalPoolName }}
-  {{- $_ := set $subnetIpamPoolSelectorLabels "hops.ops.com.ai/global-pool" $subnetIpamGlobalPoolName }}
-{{ end }}
-{{ $subnetIpamSelectorHasLabels := gt (len (keys $subnetIpamPoolSelectorLabels)) 0 }}
-
-# Determine if an existing subnet pool is referenced
-{{ $hasExistingSubnetPool := or $subnetIpamPoolRefName $subnetIpamSelectorHasLabels }}
-{{ $onDemandSubnetPoolName := printf "%s-subnet-pool" $networkName }}
 
 # Build subnet type set for quick lookup
 {{ $subnetTypeSet := dict }}
