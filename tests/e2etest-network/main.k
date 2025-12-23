@@ -43,7 +43,7 @@ _items = [
                         clusterName: "default"
                         aws: {
                             config: {
-                                region: "us-east-1"
+                                region: "us-east-2"
                                 tags: {
                                     "e2etest": "true"
                                     "test-run": _now
