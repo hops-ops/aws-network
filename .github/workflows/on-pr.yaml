@@ -53,11 +53,6 @@ jobs:
     with:
       aws: true
       timeout-minutes: 30
-      debug-example-path: examples/networks/minimal.yaml
-      debug-resource-types: |
-        [
-          "networks.aws.hops.ops.com.ai"
-        ]
 
   publish:
     needs:
