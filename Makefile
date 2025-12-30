@@ -16,7 +16,7 @@ EXAMPLES := \
     examples/networks/dual-stack-ula.yaml:: \
     examples/networks/dual-stack-amazon.yaml:: \
     examples/networks/high-availability.yaml:: \
-    examples/networks/with-allocations.yaml::examples/networks/observed-resources/with-allocations
+    examples/networks/with-allocations.yaml::examples/test/mocks/observed-resources/with-allocations/steps/2
 
 clean:
 	rm -rf _output

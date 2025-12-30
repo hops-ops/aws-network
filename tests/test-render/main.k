@@ -254,6 +254,52 @@ _items = [
                 }
             ]
         }
+    },
+    # Test network with IPAM allocations
+    metav1alpha1.CompositionTest {
+        metadata.name: "test-network-with-allocations"
+        spec: {
+            compositionPath: "apis/networks/composition.yaml"
+            xrPath: "examples/networks/with-allocations.yaml"
+            xrdPath: "apis/networks/definition.yaml"
+            timeoutSeconds: 60
+            validate: True
+            assertResources: [
+                # VPC allocates directly from IPAM pool (no explicit cidrBlock)
+                {
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
+                    kind: "VPC"
+                    metadata: {
+                        name: "with-allocations"
+                    }
+                    spec: {
+                        forProvider: {
+                            region: "us-east-1"
+                            ipv4IpamPoolId: "ipam-pool-0123456789abcdef0"
+                            ipv4NetmaskLength: 16
+                            ipv6IpamPoolId: "ipam-pool-0fedcba9876543210"
+                            ipv6NetmaskLength: 48
+                        }
+                    }
+                }
+                # NAT Gateway
+                {
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
+                    kind: "NATGateway"
+                    metadata: {
+                        name: "with-allocations-nat-a"
+                    }
+                }
+                # Egress-only IGW for IPv6
+                {
+                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
+                    kind: "EgressOnlyInternetGateway"
+                    metadata: {
+                        name: "with-allocations"
+                    }
+                }
+            ]
+        }
     }
 ]
 

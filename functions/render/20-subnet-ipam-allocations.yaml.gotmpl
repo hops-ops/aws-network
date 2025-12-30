@@ -1,0 +1,222 @@
+# code: language=yaml
+#
+# IPAM Allocations for Network
+# Creates subnet pools and allocations when using IPAM-based networking.
+# VPC allocates directly using ipv4IpamPoolId; this handles subnet allocations.
+#
+
+# ==============================================================================
+# IPv4 Subnet Pool (created after VPC is ready with its allocated CIDR)
+# ==============================================================================
+{{ if and $ipv4AllocationEnabled $vpcReady (ne $observedVpcCidr "") }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPool
+metadata:
+  name: {{ $networkName }}-ipv4-subnet
+  annotations:
+    {{ setResourceNameAnnotation "ipv4-subnet-pool" }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/pool-type: subnet
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    addressFamily: ipv4
+    ipamScopeId: {{ $ipv4ScopeId }}
+    sourceIpamPoolId: {{ $ipv4RegionalPoolId }}
+    allocationMinNetmaskLength: 20
+    allocationMaxNetmaskLength: 28
+    allocationDefaultNetmaskLength: 24
+    {{- if $ipv4Locale }}
+    locale: {{ $ipv4Locale }}
+    {{- end }}
+    region: {{ $awsRegion }}
+    description: "Subnet pool for {{ $networkName }}"
+    tags:
+      {{ $awsTags | toYaml | nindent 6 }}
+      Name: {{ $networkName }}-ipv4-subnet-pool
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidr
+metadata:
+  name: {{ $networkName }}-ipv4-subnet
+  annotations:
+    {{ setResourceNameAnnotation "ipv4-subnet-pool-cidr" }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    ipamPoolIdRef:
+      name: {{ $networkName }}-ipv4-subnet
+    cidr: {{ $observedVpcCidr }}
+    region: {{ $awsRegion }}
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+{{ end }}
+
+# ==============================================================================
+# IPv4 Subnet Allocations (created after subnet pool is ready)
+# ==============================================================================
+{{ if and $ipv4AllocationEnabled $ipv4SubnetPoolReady }}
+  {{ range $az := $ipv4AllocAzs }}
+    {{ if $ipv4AllocPrivateEnabled }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: {{ $networkName }}-ipv4-private-{{ $az }}
+  annotations:
+    {{ setResourceNameAnnotation (printf "ipv4-alloc-private-%s" $az) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/subnet-type: private
+    hops.ops.com.ai/az: {{ $az }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    ipamPoolId: {{ $ipv4SubnetPoolId }}
+    netmaskLength: {{ $ipv4AllocPrivateNetmask }}
+    region: {{ $awsRegion }}
+    description: "Private subnet {{ $az }} for {{ $networkName }}"
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+    {{ end }}
+    {{ if $ipv4AllocPublicEnabled }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: {{ $networkName }}-ipv4-public-{{ $az }}
+  annotations:
+    {{ setResourceNameAnnotation (printf "ipv4-alloc-public-%s" $az) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/subnet-type: public
+    hops.ops.com.ai/az: {{ $az }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    ipamPoolId: {{ $ipv4SubnetPoolId }}
+    netmaskLength: {{ $ipv4AllocPublicNetmask }}
+    region: {{ $awsRegion }}
+    description: "Public subnet {{ $az }} for {{ $networkName }}"
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+# ==============================================================================
+# IPv6 ULA Subnet Pool (created after VPC is ready with its allocated CIDR)
+# ==============================================================================
+{{ if and $ipv6UlaAllocationEnabled $vpcReady (ne $observedUlaIpv6Cidr "") }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPool
+metadata:
+  name: {{ $networkName }}-ipv6-subnet
+  annotations:
+    {{ setResourceNameAnnotation "ipv6-subnet-pool" }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/pool-type: subnet
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    addressFamily: ipv6
+    ipamScopeId: {{ $ipv6UlaScopeId }}
+    sourceIpamPoolId: {{ $ipv6UlaRegionalPoolId }}
+    allocationMinNetmaskLength: 64
+    allocationMaxNetmaskLength: 64
+    allocationDefaultNetmaskLength: 64
+    {{- if $ipv6UlaLocale }}
+    locale: {{ $ipv6UlaLocale }}
+    {{- end }}
+    region: {{ $awsRegion }}
+    description: "IPv6 subnet pool for {{ $networkName }}"
+    tags:
+      {{ $awsTags | toYaml | nindent 6 }}
+      Name: {{ $networkName }}-ipv6-subnet-pool
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidr
+metadata:
+  name: {{ $networkName }}-ipv6-subnet
+  annotations:
+    {{ setResourceNameAnnotation "ipv6-subnet-pool-cidr" }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    ipamPoolIdRef:
+      name: {{ $networkName }}-ipv6-subnet
+    cidr: {{ $observedUlaIpv6Cidr }}
+    region: {{ $awsRegion }}
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+{{ end }}
+
+# ==============================================================================
+# IPv6 ULA Subnet Allocations (created after subnet pool is ready)
+# ==============================================================================
+{{ if and $ipv6UlaAllocationEnabled $ipv6SubnetPoolReady }}
+  {{ range $az := $ipv6UlaAllocAzs }}
+    {{ if $ipv6UlaAllocPrivateEnabled }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: {{ $networkName }}-ipv6-private-{{ $az }}
+  annotations:
+    {{ setResourceNameAnnotation (printf "ipv6-alloc-private-%s" $az) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/subnet-type: private
+    hops.ops.com.ai/az: {{ $az }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    ipamPoolId: {{ $ipv6SubnetPoolId }}
+    netmaskLength: {{ $ipv6UlaAllocPrivateNetmask }}
+    region: {{ $awsRegion }}
+    description: "IPv6 private subnet {{ $az }} for {{ $networkName }}"
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+    {{ end }}
+    {{ if $ipv6UlaAllocPublicEnabled }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidrAllocation
+metadata:
+  name: {{ $networkName }}-ipv6-public-{{ $az }}
+  annotations:
+    {{ setResourceNameAnnotation (printf "ipv6-alloc-public-%s" $az) }}
+  labels:
+    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/subnet-type: public
+    hops.ops.com.ai/az: {{ $az }}
+spec:
+  managementPolicies: {{ $managementPolicies | toJson }}
+  forProvider:
+    ipamPoolId: {{ $ipv6SubnetPoolId }}
+    netmaskLength: {{ $ipv6UlaAllocPublicNetmask }}
+    region: {{ $awsRegion }}
+    description: "IPv6 public subnet {{ $az }} for {{ $networkName }}"
+  providerConfigRef:
+    name: {{ $providerConfigName }}
+    kind: {{ $providerConfigKind }}
+    {{ end }}
+  {{ end }}
+{{ end }}

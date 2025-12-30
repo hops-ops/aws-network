@@ -42,10 +42,6 @@
 {{ $amazonIpv6 := $vpcIpv6.amazonProvided | default (dict) }}
 {{ $amazonIpv6Enabled := $amazonIpv6.enabled | default false }}
 
-# Derived IPv6 flags
-{{ $hasIpv6 := or $ulaEnabled $amazonIpv6Enabled }}
-{{ $isDualStack := $hasIpv6 }}
-
 # NAT configuration
 {{ $nat := $spec.nat | default (dict) }}
 {{ $natEnabled := $nat.enabled | default false }}
@@ -79,12 +75,12 @@
 {{ $ipv4Locale := $ipv4Allocation.locale | default "" }}
 {{ $ipv4AllocVpc := $ipv4Allocation.vpc | default (dict) }}
 {{ $ipv4VpcNetmask := $ipv4AllocVpc.netmaskLength | default 16 }}
-{{ $ipv4AllocSubnets := $ipv4Allocation.subnets | default (dict) }}
-{{ $ipv4AllocAzs := $ipv4AllocSubnets.availabilityZones | default (list "a" "b" "c") }}
-{{ $ipv4AllocPublic := $ipv4AllocSubnets.public | default (dict) }}
+{{ $ipv4AllocSubnetsConfig := $ipv4Allocation.subnets | default (dict) }}
+{{ $ipv4AllocAzs := $ipv4AllocSubnetsConfig.availabilityZones | default (list "a" "b" "c") }}
+{{ $ipv4AllocPublic := $ipv4AllocSubnetsConfig.public | default (dict) }}
 {{ $ipv4AllocPublicEnabled := $ipv4AllocPublic.enabled | default true }}
 {{ $ipv4AllocPublicNetmask := $ipv4AllocPublic.netmaskLength | default 24 }}
-{{ $ipv4AllocPrivate := $ipv4AllocSubnets.private | default (dict) }}
+{{ $ipv4AllocPrivate := $ipv4AllocSubnetsConfig.private | default (dict) }}
 {{ $ipv4AllocPrivateEnabled := $ipv4AllocPrivate.enabled | default true }}
 {{ $ipv4AllocPrivateNetmask := $ipv4AllocPrivate.netmaskLength | default 20 }}
 
@@ -96,14 +92,34 @@
 {{ $ipv6UlaLocale := $ipv6UlaAllocation.locale | default "" }}
 {{ $ipv6UlaAllocVpc := $ipv6UlaAllocation.vpc | default (dict) }}
 {{ $ipv6UlaVpcNetmask := $ipv6UlaAllocVpc.netmaskLength | default 48 }}
-{{ $ipv6UlaAllocSubnets := $ipv6UlaAllocation.subnets | default (dict) }}
-{{ $ipv6UlaAllocAzs := $ipv6UlaAllocSubnets.availabilityZones | default (list "a" "b" "c") }}
-{{ $ipv6UlaAllocPublic := $ipv6UlaAllocSubnets.public | default (dict) }}
+{{ $ipv6UlaAllocSubnetsConfig := $ipv6UlaAllocation.subnets | default (dict) }}
+{{ $ipv6UlaAllocAzs := $ipv6UlaAllocSubnetsConfig.availabilityZones | default (list "a" "b" "c") }}
+{{ $ipv6UlaAllocPublic := $ipv6UlaAllocSubnetsConfig.public | default (dict) }}
 {{ $ipv6UlaAllocPublicEnabled := $ipv6UlaAllocPublic.enabled | default true }}
 {{ $ipv6UlaAllocPublicNetmask := $ipv6UlaAllocPublic.netmaskLength | default 64 }}
-{{ $ipv6UlaAllocPrivate := $ipv6UlaAllocSubnets.private | default (dict) }}
+{{ $ipv6UlaAllocPrivate := $ipv6UlaAllocSubnetsConfig.private | default (dict) }}
 {{ $ipv6UlaAllocPrivateEnabled := $ipv6UlaAllocPrivate.enabled | default true }}
 {{ $ipv6UlaAllocPrivateNetmask := $ipv6UlaAllocPrivate.netmaskLength | default 64 }}
+
+# Derived IPv6 flags (after allocation config is parsed)
+{{ $hasIpv6 := or $ulaEnabled $amazonIpv6Enabled $ipv6UlaAllocationEnabled }}
+{{ $isDualStack := $hasIpv6 }}
+
+# Placeholders for observed subnet CIDRs (populated from IPAM allocations in 10-observed-values)
+{{ $ipv4AllocSubnets := dict }}
+{{ $ipv6UlaAllocSubnets := dict }}
+
+# Placeholders for IPAM pool readiness (populated in 10-observed-values)
+{{ $ipv4SubnetPoolReady := false }}
+{{ $ipv4SubnetPoolId := "" }}
+{{ $ipv6SubnetPoolReady := false }}
+{{ $ipv6SubnetPoolId := "" }}
+
+# Placeholders for subnet/NAT/route table configs (populated in 12-desired-values-subnets)
+{{ $publicSubnets := list }}
+{{ $privateSubnets := list }}
+{{ $natConfigsForCreation := list }}
+{{ $privateRouteTables := list }}
 
 # Derived: using any allocation
 {{ $usingAllocations := or $ipv4AllocationEnabled $ipv6UlaAllocationEnabled }}

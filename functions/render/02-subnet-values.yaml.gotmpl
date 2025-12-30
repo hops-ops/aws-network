@@ -80,8 +80,6 @@
 {{ end }}
 
 # Build subnet configs with computed values
-{{ $publicSubnets := list }}
-{{ $privateSubnets := list }}
 {{ $availabilityZones := list }}
 {{ $azSet := dict }}
 
@@ -165,7 +163,6 @@
 {{ end }}
 
 # Build NAT configs
-{{ $natConfigsForCreation := list }}
 {{ $natConfigsByAz := dict }}
 
 {{ if $natDesired }}
@@ -198,7 +195,6 @@
 {{ end }}
 
 # Build private route table configs (one per AZ with private subnets)
-{{ $privateRouteTables := list }}
 {{ $privateRtByAz := dict }}
 
 {{ range $subnet := $privateSubnets }}

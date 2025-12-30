@@ -44,45 +44,58 @@ _items = [
                         namespace: "default"
                     }
                     spec: {
-                        clusterName: "default"
-                        aws: {
-                            config: {
-                                region: "us-east-2"
-                                tags: {
-                                    "e2etest": "true"
-                                    "test-run": _now
-                                }
-                            }
+                        providerConfigRef: {
+                            name: "default"
                         }
-                        cidr: {
+                        region: "us-east-2"
+                        tags: {
+                            "e2etest": "true"
+                            "test-run": _now
+                        }
+                        # Use networkAllocations to auto-allocate CIDRs from IPAM
+                        networkAllocations: {
                             ipv4: {
-                                ipam: {
-                                    poolId: _ipv4_private_pool_id
-                                    scopeId: _ipam_private_scope_id
-                                    # Per-network child pool is created automatically
-                                    subnetPool: {
+                                enabled: True
+                                regionalPoolId: _ipv4_private_pool_id
+                                scopeId: _ipam_private_scope_id
+                                vpc: {
+                                    netmaskLength: 16
+                                }
+                                subnets: {
+                                    availabilityZones: ["a", "b"]
+                                    public: {
                                         enabled: True
                                         netmaskLength: 24
                                     }
+                                    private: {
+                                        enabled: True
+                                        netmaskLength: 20
+                                    }
                                 }
                             }
-                            ipv6: {
+                            ipv6Ula: {
                                 enabled: True
-                                ipam: {
-                                    poolId: _ipv6_private_pool_id
-                                    scopeId: _ipam_private_scope_id
-                                    # Per-network child pool is created automatically
-                                    subnetPool: {
+                                regionalPoolId: _ipv6_private_pool_id
+                                scopeId: _ipam_private_scope_id
+                                vpc: {
+                                    netmaskLength: 48
+                                }
+                                subnets: {
+                                    availabilityZones: ["a", "b"]
+                                    public: {
+                                        enabled: True
+                                        netmaskLength: 64
+                                    }
+                                    private: {
                                         enabled: True
                                         netmaskLength: 64
                                     }
                                 }
                             }
-                            mode: "dual-stack"
                         }
-                        subnets: {
-                            availabilityZones: ["a", "b"]
-                            types: ["private", "public"]
+                        # No NAT gateway (costs money) - use IPv6 egress-only IGW instead
+                        nat: {
+                            enabled: False
                         }
                     }
                 }
