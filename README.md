@@ -4,7 +4,9 @@ Create production-ready AWS VPCs with IPAM-backed CIDR allocation, dual-stack IP
 
 ## Quick Start
 
-We recommend starting with **IPAM + dual-stack IPv6** from day one. This simplifies CIDR management and prepares your network for EKS Auto Mode and modern IPv6 workloads.
+### Minimal Network (Manual CIDRs)
+
+The simplest configuration with explicit CIDR blocks:
 
 ```yaml
 apiVersion: aws.hops.ops.com.ai/v1alpha1
@@ -13,33 +15,89 @@ metadata:
   name: my-network
   namespace: dev
 spec:
-  clusterName: my-cluster
-  aws:
-    config:
-      region: us-east-1
-  cidr:
+  region: us-east-1
+  providerConfigRef:
+    name: default
+  vpc:
+    cidr: "10.1.0.0/16"
+  subnets:
+    - name: my-network-public-a
+      cidr: "10.1.0.0/24"
+      availabilityZone: a
+      public: true
+    - name: my-network-public-b
+      cidr: "10.1.1.0/24"
+      availabilityZone: b
+      public: true
+    - name: my-network-private-a
+      cidr: "10.1.16.0/20"
+      availabilityZone: a
+    - name: my-network-private-b
+      cidr: "10.1.32.0/20"
+      availabilityZone: b
+```
+
+**Cost: ~$0/mo** | **Created: VPC, 4 subnets, IGW, route tables**
+
+### IPAM + Dual-Stack (Recommended)
+
+For enterprise deployments, use IPAM for automatic CIDR allocation:
+
+```yaml
+apiVersion: aws.hops.ops.com.ai/v1alpha1
+kind: Network
+metadata:
+  name: my-network
+  namespace: dev
+spec:
+  region: us-east-1
+  providerConfigRef:
+    name: default
+  networkAllocations:
     ipv4:
-      ipam:
-        globalPoolName: sandbox
-    ipv6:
       enabled: true
-      amazonProvided: true
-    mode: dual-stack
+      regionalPoolId: ipam-pool-0123456789abcdef0
+      scopeId: ipam-scope-0123456789abcdef0
+      vpc:
+        netmaskLength: 16
+      subnets:
+        availabilityZones: [a, b, c]
+        public:
+          enabled: true
+          netmaskLength: 24
+        private:
+          enabled: true
+          netmaskLength: 20
+    ipv6Ula:
+      enabled: true
+      regionalPoolId: ipam-pool-0fedcba9876543210
+      scopeId: ipam-scope-0fedcba9876543210
+      vpc:
+        netmaskLength: 48
+      subnets:
+        availabilityZones: [a, b, c]
+        public:
+          enabled: true
+          netmaskLength: 64
+        private:
+          enabled: true
+          netmaskLength: 64
+  vpc: {}
   nat:
     enabled: false
 ```
 
-**Cost: ~$0/mo** | **Created: VPC, 6 subnets, IGW, Egress-Only IGW, routes**
+**Cost: ~$0/mo** | **Created: VPC, 6 subnets, IPAM pools, IGW, Egress-Only IGW, routes**
 
 ### Why No NAT by Default?
 
 For Kubernetes workloads, NAT Gateways are often unnecessary:
 
-1. **Public ingress via Load Balancers** - The platform (AWS Load Balancer Controller) handles external traffic to your services. Load balancers provide the public-facing endpoint, not NAT.
-2. **IPv6 egress is free** - With dual-stack enabled, pods use the Egress-Only Internet Gateway for outbound IPv6 traffic at no cost.
-3. **VPC Endpoints for AWS services** - Access ECR, S3, and other AWS services via private endpoints instead of routing through the internet.
+1. **Public ingress via Load Balancers** - The platform handles external traffic to your services
+2. **IPv6 egress is free** - Pods use the Egress-Only Internet Gateway for outbound IPv6 traffic
+3. **VPC Endpoints for AWS services** - Access ECR, S3 via private endpoints
 
-This saves ~$32/mo for individuals. Add NAT later if you have workloads that require IPv4 egress to external services.
+This saves ~$32/mo. Add NAT later if you need IPv4 egress to external services.
 
 ## Why Start with IPAM + IPv6?
 
@@ -49,7 +107,7 @@ This saves ~$32/mo for individuals. Add NAT later if you have workloads that req
 - **Multi-account ready** - Share pools via RAM when you scale
 
 ### IPv6 Benefits
-- **EKS Auto Mode** - IPv6 prevents IP exhaustion when scaling with EKS Auto Mode
+- **EKS Auto Mode** - IPv6 prevents IP exhaustion when scaling
 - **Future-proof** - Native dual-stack from day one
 - **Cost savings** - Egress-Only IGW is free (vs $32/mo NAT per AZ for IPv4)
 
@@ -57,18 +115,15 @@ This saves ~$32/mo for individuals. Add NAT later if you have workloads that req
 
 ### What is NAT and Why Do You Need It?
 
-**NAT (Network Address Translation)** allows resources in private subnets to initiate outbound connections to the internet while remaining unreachable from the internet. Private subnets don't have public IP addresses, so without NAT, they can't reach external services.
+**NAT (Network Address Translation)** allows resources in private subnets to initiate outbound connections to the internet while remaining unreachable from the internet.
 
 **Common use cases requiring outbound internet access:**
-- Pulling container images from Docker Hub, ECR, or other registries
-- Calling external APIs (payment processors, SaaS services, webhooks)
+- Pulling container images from Docker Hub or external registries
+- Calling external APIs (payment processors, SaaS services)
 - Downloading OS updates and security patches
-- Sending logs/metrics to external observability platforms
-- Connecting to external databases or services
+- Sending logs/metrics to external platforms
 
 ### NAT Gateway Costs
-
-NAT Gateways are one of the most expensive components in AWS networking:
 
 | Component | Cost |
 |-----------|------|
@@ -82,20 +137,8 @@ NAT Gateways are one of the most expensive components in AWS networking:
 | Strategy | NAT Gateways | Monthly Cost | Use Case |
 |----------|--------------|--------------|----------|
 | **None** | 0 | $0 | Isolated workloads, no internet needed |
-| **SingleAz** | 1 | ~$32 | Dev/test, cost-sensitive, can tolerate brief outages |
-| **HighlyAvailable** | 1 per AZ (3) | ~$96 | Production, uptime-critical IPv4 egress |
-
-**SingleAz tradeoffs:**
-- All private subnets route through one NAT Gateway in AZ-a
-- If AZ-a has an outage, private subnets in AZ-b and AZ-c lose IPv4 internet access
-- Workloads continue running, but can't pull new images or call external APIs
-- Cross-AZ data transfer costs apply (~$0.01/GB between AZs)
-
-**HighlyAvailable tradeoffs:**
-- Each AZ has its own NAT Gateway
-- No cross-AZ dependency for egress
-- 3x the base cost
-- No cross-AZ data transfer for egress traffic
+| **SingleAz** | 1 | ~$32 | Dev/test, cost-sensitive |
+| **HighlyAvailable** | 1 per AZ (3) | ~$96 | Production, uptime-critical |
 
 ### IPv6 Changes Everything
 
@@ -106,43 +149,10 @@ With dual-stack networking, IPv6 traffic uses an **Egress-Only Internet Gateway*
 | Hourly cost | ~$0.045/hr | **Free** |
 | Data processing | $0.045/GB | **Free** |
 | HA requirement | 1 per AZ | 1 total (regional) |
-| Inbound blocked | Yes | Yes |
 
-**This is why we recommend dual-stack from day one.** As more services support IPv6, your egress costs drop to zero for that traffic. The Egress-Only IGW is automatically HA with no additional cost.
-
-### When You Can Skip NAT Entirely
-
-You don't need NAT if:
-
-1. **IPv6 egress** - Use Egress-Only IGW (free, HA by default) for IPv6 traffic
-2. **VPC Endpoints** - Access AWS services (S3, ECR, etc.) via private endpoints instead of internet
-3. **Nodes in public subnets** - EKS nodes with public IPs can egress directly through the IGW
-4. **Isolated workloads** - No internet access needed (air-gapped, internal-only)
-5. **Transit Gateway** - Route through a central egress VPC instead
-
-**Example: ECR without NAT**
-
-Instead of pulling images through NAT, create VPC endpoints for ECR:
-- `com.amazonaws.region.ecr.api`
-- `com.amazonaws.region.ecr.dkr`
-- `com.amazonaws.region.s3` (for image layers)
-
-This eliminates NAT dependency for container workloads and can significantly reduce costs.
-
-**Service Mesh Egress Gateways (Istio, etc.)**
-
-Istio egress gateways centralize and control outbound traffic, but the gateway pods still need outbound connectivity. Options:
-- Run gateway pods on nodes in public subnets with public IPs
-- Use IPv6 egress for gateway traffic
-- Add NAT only if gateways need IPv4 egress to external services
-
-The gateway doesn't replace NAT - it's a control plane on top of the underlying network connectivity.
-
-## Use Cases: Individual to Enterprise
+## Use Cases
 
 ### Stage 1: Individual Developer (~$0/mo)
-
-Starting out? Use the minimal configuration without NAT. The platform handles public connectivity via load balancers for ingress, and IPv6 egress is free.
 
 ```yaml
 apiVersion: aws.hops.ops.com.ai/v1alpha1
@@ -150,32 +160,29 @@ kind: Network
 metadata:
   name: dev-vpc
 spec:
-  clusterName: dev
-  aws:
-    config:
-      region: us-east-1
-  cidr:
-    ipv4:
-      ipam:
-        globalPoolName: sandbox
-    ipv6:
-      enabled: true
-      amazonProvided: true
-    mode: dual-stack
-  nat:
-    enabled: false
+  region: us-east-1
+  providerConfigRef:
+    name: default
+  vpc:
+    cidr: "10.1.0.0/16"
+  subnets:
+    - name: dev-public-a
+      cidr: "10.1.0.0/24"
+      availabilityZone: a
+      public: true
+    - name: dev-public-b
+      cidr: "10.1.1.0/24"
+      availabilityZone: b
+      public: true
+    - name: dev-private-a
+      cidr: "10.1.16.0/20"
+      availabilityZone: a
+    - name: dev-private-b
+      cidr: "10.1.32.0/20"
+      availabilityZone: b
 ```
 
-**What you get:**
-- VPC with IPv4 (from IPAM) + IPv6 (Amazon-provided /56)
-- 3 public + 3 private subnets across AZs a, b, c (HA from day one)
-- No NAT Gateway (save ~$32/mo) - use VPC endpoints for AWS services
-- Egress-Only IGW for IPv6 private traffic (free, no single point of failure)
-- Ready for EKS Auto Mode with AWS Load Balancer Controller for ingress
-
-### Stage 2: Small Team (~$0-32/mo)
-
-Customize for your team's needs. Add SingleAz NAT only if you need IPv4 egress to external services that don't support IPv6.
+### Stage 2: Small Team with NAT (~$32/mo)
 
 ```yaml
 apiVersion: aws.hops.ops.com.ai/v1alpha1
@@ -183,30 +190,42 @@ kind: Network
 metadata:
   name: team-vpc
 spec:
-  clusterName: team-prod
-  aws:
-    config:
-      region: us-west-2
-      tags:
-        team: platform
-        environment: production
-  cidr:
-    ipv4:
-      ipam:
-        globalPoolName: team-pool
-    ipv6:
-      enabled: true
-      amazonProvided: true
-    mode: dual-stack
+  region: us-west-2
+  providerConfigRef:
+    name: default
+  tags:
+    team: platform
+    environment: production
+  vpc:
+    cidr: "10.2.0.0/16"
   subnets:
-    netmaskLength: 21  # /21 = 2048 IPs per subnet (default 3 AZs)
+    - name: team-public-a
+      cidr: "10.2.0.0/24"
+      availabilityZone: a
+      public: true
+    - name: team-public-b
+      cidr: "10.2.1.0/24"
+      availabilityZone: b
+      public: true
+    - name: team-public-c
+      cidr: "10.2.2.0/24"
+      availabilityZone: c
+      public: true
+    - name: team-private-a
+      cidr: "10.2.16.0/20"
+      availabilityZone: a
+    - name: team-private-b
+      cidr: "10.2.32.0/20"
+      availabilityZone: b
+    - name: team-private-c
+      cidr: "10.2.48.0/20"
+      availabilityZone: c
   nat:
-    enabled: false  # Add `enabled: true` + `strategy: SingleAz` if IPv4 egress needed
+    enabled: true
+    strategy: SingleAz
 ```
 
-### Stage 3: Growing Startup (~$96/mo)
-
-Add NAT redundancy when IPv4 egress uptime matters.
+### Stage 3: Production with HA NAT (~$96/mo)
 
 ```yaml
 apiVersion: aws.hops.ops.com.ai/v1alpha1
@@ -214,37 +233,124 @@ kind: Network
 metadata:
   name: prod-vpc
 spec:
-  clusterName: prod
-  aws:
-    config:
-      region: us-east-1
-      tags:
-        environment: production
-        cost-center: engineering
-  cidr:
-    ipv4:
-      ipam:
-        globalPoolName: production
-    ipv6:
-      enabled: true
-      ipam:
-        globalPoolName: ipv6-public  # Use IPAM for IPv6 too
-    mode: dual-stack
+  region: us-east-1
+  providerConfigRef:
+    name: aws-prod
+  tags:
+    environment: production
+    cost-center: engineering
+  vpc:
+    cidr: "10.5.0.0/16"
   subnets:
-    availabilityZones: [a, b, c]
-    netmaskLength: 19  # /19 = 8192 IPs per subnet
+    - name: ha-public-a
+      cidr: "10.5.0.0/24"
+      availabilityZone: a
+      public: true
+    - name: ha-public-b
+      cidr: "10.5.1.0/24"
+      availabilityZone: b
+      public: true
+    - name: ha-public-c
+      cidr: "10.5.2.0/24"
+      availabilityZone: c
+      public: true
+    - name: ha-private-a
+      cidr: "10.5.16.0/20"
+      availabilityZone: a
+    - name: ha-private-b
+      cidr: "10.5.32.0/20"
+      availabilityZone: b
+    - name: ha-private-c
+      cidr: "10.5.48.0/20"
+      availabilityZone: c
   nat:
-    strategy: HighlyAvailable  # NAT per AZ - no single point of failure
+    enabled: true
+    strategy: HighlyAvailable
 ```
 
-**What changes:**
-- HighlyAvailable NAT = 3 NAT Gateways (one per AZ) - no single point of failure for IPv4 egress
-- Larger subnets for growth (/19 = 8192 IPs per subnet)
-- IPv6 from IPAM for centralized management across VPCs
+### Stage 4: Dual-Stack with ULA IPv6
 
-### Stage 4: Enterprise (~$150/mo+)
+```yaml
+apiVersion: aws.hops.ops.com.ai/v1alpha1
+kind: Network
+metadata:
+  name: dual-stack
+spec:
+  region: us-east-1
+  providerConfigRef:
+    name: default
+  vpc:
+    cidr: "10.3.0.0/16"
+    ipv6:
+      ula:
+        enabled: true
+        cidr: "fd00:dead:beef::/48"
+        ipamPoolId: ipam-pool-0abc123
+  subnets:
+    - name: ds-public-a
+      cidr: "10.3.0.0/24"
+      availabilityZone: a
+      public: true
+      ipv6:
+        ulaCidr: "fd00:dead:beef:0::/64"
+    - name: ds-public-b
+      cidr: "10.3.1.0/24"
+      availabilityZone: b
+      public: true
+      ipv6:
+        ulaCidr: "fd00:dead:beef:1::/64"
+    - name: ds-private-a
+      cidr: "10.3.16.0/20"
+      availabilityZone: a
+      ipv6:
+        ulaCidr: "fd00:dead:beef:100::/64"
+    - name: ds-private-b
+      cidr: "10.3.32.0/20"
+      availabilityZone: b
+      ipv6:
+        ulaCidr: "fd00:dead:beef:101::/64"
+  nat:
+    enabled: true
+    strategy: SingleAz
+```
 
-Full featured with Transit Gateway, Flow Logs, and compliance-ready configuration.
+### Stage 5: Dual-Stack with Amazon-Provided IPv6
+
+```yaml
+apiVersion: aws.hops.ops.com.ai/v1alpha1
+kind: Network
+metadata:
+  name: dual-stack-amazon
+spec:
+  region: us-east-1
+  providerConfigRef:
+    name: default
+  vpc:
+    cidr: "10.4.0.0/16"
+    ipv6:
+      amazonProvided:
+        enabled: true
+  subnets:
+    - name: dsa-public-a
+      cidr: "10.4.0.0/24"
+      availabilityZone: a
+      public: true
+    - name: dsa-public-b
+      cidr: "10.4.1.0/24"
+      availabilityZone: b
+      public: true
+    - name: dsa-private-a
+      cidr: "10.4.16.0/20"
+      availabilityZone: a
+    - name: dsa-private-b
+      cidr: "10.4.32.0/20"
+      availabilityZone: b
+  nat:
+    enabled: true
+    strategy: SingleAz
+```
+
+### Stage 6: Enterprise with IPAM + TGW + Flow Logs
 
 ```yaml
 apiVersion: aws.hops.ops.com.ai/v1alpha1
@@ -253,30 +359,46 @@ metadata:
   name: enterprise-vpc
   namespace: acme-prod
 spec:
-  clusterName: acme-prod
-  aws:
-    providerConfig: acme-aws-prod
-    config:
-      region: us-east-1
-      accountId: "123456789012"
-      tags:
-        environment: production
-        compliance: soc2
-        cost-center: "12345"
-        data-classification: confidential
-  cidr:
+  region: us-east-1
+  accountId: "123456789012"
+  providerConfigRef:
+    name: acme-aws-prod
+  tags:
+    environment: production
+    compliance: soc2
+    cost-center: "12345"
+  networkAllocations:
     ipv4:
-      ipam:
-        globalPoolName: enterprise-prod
-    ipv6:
       enabled: true
-      ipam:
-        globalPoolName: ipv6-enterprise
-    mode: dual-stack
-  subnets:
-    availabilityZones: [a, b, c]
-    netmaskLength: 18  # /18 = 16384 IPs per subnet
+      regionalPoolId: ipam-pool-enterprise123
+      scopeId: ipam-scope-enterprise456
+      vpc:
+        netmaskLength: 16
+      subnets:
+        availabilityZones: [a, b, c]
+        public:
+          enabled: true
+          netmaskLength: 24
+        private:
+          enabled: true
+          netmaskLength: 18
+    ipv6Ula:
+      enabled: true
+      regionalPoolId: ipam-pool-ipv6-enterprise
+      scopeId: ipam-scope-ipv6-enterprise
+      vpc:
+        netmaskLength: 48
+      subnets:
+        availabilityZones: [a, b, c]
+        public:
+          enabled: true
+          netmaskLength: 64
+        private:
+          enabled: true
+          netmaskLength: 64
+  vpc: {}
   nat:
+    enabled: true
     strategy: HighlyAvailable
   transitGateway:
     enabled: true
@@ -291,158 +413,76 @@ spec:
       trafficType: ALL
 ```
 
-**Enterprise features:**
-- Transit Gateway for hub-and-spoke networking
-- VPC Flow Logs for security monitoring and compliance
-- Larger subnets for enterprise workloads
-- Full tagging for cost allocation
-
-## Special Cases
-
-### Private-Only Network ($0/mo)
-
-For isolated workloads that don't need internet access.
-
-```yaml
-apiVersion: aws.hops.ops.com.ai/v1alpha1
-kind: Network
-metadata:
-  name: isolated-vpc
-spec:
-  clusterName: isolated
-  aws:
-    config:
-      region: us-east-1
-  cidr:
-    ipv4:
-      ipam:
-        poolRef:
-          name: isolated-pool
-  subnets:
-    types: [private]  # No public subnets
-  nat:
-    enabled: false    # No internet egress
-```
-
-### Manual CIDR (No IPAM)
-
-For legacy environments or when IPAM isn't available.
-
-```yaml
-apiVersion: aws.hops.ops.com.ai/v1alpha1
-kind: Network
-metadata:
-  name: legacy-vpc
-spec:
-  clusterName: legacy
-  aws:
-    config:
-      region: eu-west-1
-  cidr:
-    ipv4:
-      manual:
-        vpcCidr: 172.16.0.0/16
-        subnets:
-          public:
-            - cidr: 172.16.0.0/20
-              availabilityZone: a
-            - cidr: 172.16.16.0/20
-              availabilityZone: b
-            - cidr: 172.16.32.0/20
-              availabilityZone: c
-          private:
-            - cidr: 172.16.128.0/20
-              availabilityZone: a
-            - cidr: 172.16.144.0/20
-              availabilityZone: b
-            - cidr: 172.16.160.0/20
-              availabilityZone: c
-```
-
 ## Cost Summary
 
 | Configuration | NAT Strategy | Monthly Cost |
 |--------------|--------------|--------------|
-| Individual (no NAT) | None | $0 |
-| Small Team (no NAT) | None | $0 |
-| Private Only | None | $0 |
-| Small Team (SingleAz) | SingleAz | ~$32 |
+| Minimal (no NAT) | None | $0 |
+| With SingleAz NAT | SingleAz | ~$32 |
 | Production (HA NAT) | HighlyAvailable | ~$96 |
-| Enterprise (HA + TGW) | HighlyAvailable | ~$132 |
-| Enterprise (Full) | HighlyAvailable | ~$150+ |
+| Enterprise (HA + TGW) | HighlyAvailable | ~$132+ |
 
-**Note:** IPv6 egress via Egress-Only IGW is free. Only IPv4 NAT Gateways cost money. For Kubernetes workloads, the platform handles public ingress via load balancers, and VPC endpoints provide private access to AWS services like ECR and S3.
-
-## Prerequisites
-
-### IPAM Setup
-
-Before creating networks, set up an IPAM with pools:
-
-```yaml
-apiVersion: aws.hops.ops.com.ai/v1alpha1
-kind: IPAM
-metadata:
-  name: my-ipam
-spec:
-  scope: private  # or global-organization for multi-account
-  homeRegion: us-east-1
-  pools:
-    - name: sandbox
-      cidr: 10.0.0.0/8
-      labels:
-        hops.ops.com.ai/global-pool: sandbox
-    - name: ipv6-public
-      addressFamily: ipv6
-      scope: public
-      amazonProvidedIpv6CidrBlock: true
-      netmaskLength: 52
-      labels:
-        hops.ops.com.ai/global-pool: ipv6-public
-```
-
-### EKS Auto Mode Compatibility
-
-If you plan to use EKS Auto Mode, your network is already configured correctly with dual-stack:
-- **Dual-stack enabled** - `cidr.mode: dual-stack`
-- **IPv6 configured** - Either `amazonProvided: true` or IPAM IPv6 pool
-- **Proper subnet tags** - Automatically added: `kubernetes.io/role/elb` and `kubernetes.io/role/internal-elb`
+**Note:** IPv6 egress via Egress-Only IGW is free. Only IPv4 NAT Gateways cost money.
 
 ## API Reference
 
-### spec.aws
+### spec
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `providerConfig` | string | clusterName | AWS ProviderConfig name |
-| `config.region` | string | required | AWS region |
-| `config.accountId` | string | - | AWS account ID (for tagging) |
-| `config.tags` | object | - | Additional AWS tags |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `region` | string | Yes | AWS region |
+| `accountId` | string | No | AWS account ID (for tagging) |
+| `providerConfigRef.name` | string | No | AWS ProviderConfig name (default: "default") |
+| `providerConfigRef.kind` | string | No | Provider config kind (default: "ProviderConfig") |
+| `tags` | object | No | Additional AWS tags |
+| `managementPolicies` | []string | No | Management policies (default: ["*"]) |
 
-### spec.cidr
+### spec.vpc
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ipv4.ipam.globalPoolName` | string | - | Global IPAM pool name |
-| `ipv4.ipam.poolRef.name` | string | - | Direct IPAM pool reference |
-| `ipv4.manual.vpcCidr` | string | - | Manual VPC CIDR |
-| `ipv6.enabled` | boolean | false | Enable IPv6 |
-| `ipv6.amazonProvided` | boolean | false | Use Amazon-provided /56 |
-| `mode` | string | ipv4-only | `ipv4-only`, `dual-stack`, `ipv6-only` |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `cidr` | string | No* | IPv4 CIDR block (e.g., "10.1.0.0/16") |
+| `ipv6.ula.enabled` | boolean | No | Enable ULA IPv6 |
+| `ipv6.ula.cidr` | string | No | ULA IPv6 CIDR (e.g., "fd00::/48") |
+| `ipv6.ula.ipamPoolId` | string | No | IPAM pool ID for ULA IPv6 |
+| `ipv6.amazonProvided.enabled` | boolean | No | Request Amazon-provided /56 IPv6 |
+| `forProvider` | object | No | Pass-through for VPC forProvider fields |
 
-### spec.subnets
+*Required unless using `networkAllocations.ipv4`
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `availabilityZones` | []string | [a, b, c] | AZ suffixes |
-| `netmaskLength` | int | 20 | IPv4 subnet size |
-| `types` | []string | [public, private] | Subnet types |
+### spec.subnets[]
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Subnet name |
+| `cidr` | string | No* | IPv4 CIDR block |
+| `availabilityZone` | string | Yes | AZ suffix (a, b, c) |
+| `public` | boolean | No | Public subnet (default: false) |
+| `ipv6.ulaCidr` | string | No | ULA IPv6 CIDR for subnet |
+| `ipv6.amazonProvidedCidr` | string | No | Amazon IPv6 CIDR for subnet |
+
+*Required unless using `networkAllocations.ipv4`
+
+### spec.networkAllocations
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `ipv4.enabled` | boolean | Enable IPv4 CIDR allocation from IPAM |
+| `ipv4.regionalPoolId` | string | Regional IPAM pool ID |
+| `ipv4.scopeId` | string | IPAM scope ID |
+| `ipv4.vpc.netmaskLength` | int | VPC netmask (default: 16) |
+| `ipv4.subnets.availabilityZones` | []string | AZs for auto-generated subnets |
+| `ipv4.subnets.public.enabled` | boolean | Create public subnets |
+| `ipv4.subnets.public.netmaskLength` | int | Public subnet netmask |
+| `ipv4.subnets.private.enabled` | boolean | Create private subnets |
+| `ipv4.subnets.private.netmaskLength` | int | Private subnet netmask |
+| `ipv6Ula.*` | | Same structure as ipv4 for IPv6 ULA |
 
 ### spec.nat
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `enabled` | boolean | true | Enable NAT Gateways |
+| `enabled` | boolean | false | Enable NAT Gateways |
 | `strategy` | string | SingleAz | `SingleAz`, `HighlyAvailable`, `None` |
 
 ### spec.transitGateway
@@ -461,37 +501,74 @@ If you plan to use EKS Auto Mode, your network is already configured correctly w
 | `config.destination` | string | cloudwatch | `cloudwatch` or `s3` |
 | `config.logDestinationArn` | string | - | Destination ARN |
 | `config.trafficType` | string | ALL | `ALL`, `ACCEPT`, `REJECT` |
+| `config.iamRoleArn` | string | - | IAM role for CloudWatch |
 
 ## Status
 
-The Network exposes observed state in `status.network`:
+The Network exposes observed state in `status`:
 
 ```yaml
 status:
   ready: true
+  allocations:  # Only present when using networkAllocations
+    ipv4:
+      ready: true
+      cidr: "10.100.0.0/16"
+      vpcPoolId: ipam-pool-xxx
+      subnetPoolId: ipam-pool-yyy
+      subnets:
+        public-a: "10.100.0.0/24"
+        private-a: "10.100.16.0/20"
+    ipv6Ula:
+      ready: true
+      cidr: "fd00:dead:beef::/48"
+      vpcPoolId: ipam-pool-ipv6-xxx
+      subnetPoolId: ipam-pool-ipv6-yyy
+      subnets:
+        public-a: "fd00:dead:beef:0::/64"
+        private-a: "fd00:dead:beef:100::/64"
   network:
+    name: my-network
+    region: us-east-1
     vpcId: vpc-abc123
     cidr:
-      ipv4: 10.100.0.0/16
-      ipv6: 2600:1f18:abc::/56
+      ipv4: "10.100.0.0/16"
+      ipv6Ula: "fd00:dead:beef::/48"
+    availabilityZones:
+      - us-east-1a
+      - us-east-1b
     subnets:
       public:
-        - name: my-vpc-public-a
+        - name: my-network-public-a
           id: subnet-pub-a
-          ipv4CidrBlock: 10.100.0.0/20
-          ipv6CidrBlock: 2600:1f18:abc:0::/64
+          availabilityZone: us-east-1a
+          ipv4CidrBlock: "10.100.0.0/24"
+          ipv6CidrBlock: "fd00:dead:beef:0::/64"
       private:
-        - name: my-vpc-private-a
+        - name: my-network-private-a
           id: subnet-priv-a
-          ipv4CidrBlock: 10.100.128.0/20
-          ipv6CidrBlock: 2600:1f18:abc:8000::/64
+          availabilityZone: us-east-1a
+          ipv4CidrBlock: "10.100.16.0/20"
+          ipv6CidrBlock: "fd00:dead:beef:100::/64"
+    routeTables:
+      public:
+        - name: my-network-public
+          id: rtb-pub
+      private:
+        - name: my-network-private-rt-a
+          id: rtb-priv-a
+          availabilityZone: us-east-1a
     natGateways:
-      - name: my-vpc-nat-a
+      - name: my-network-nat-a
         id: nat-abc123
+        availabilityZone: us-east-1a
     internetGateway:
       id: igw-abc123
     egressOnlyInternetGateway:
       id: eigw-abc123
+    transitGatewayAttachment:
+      id: tgw-attach-abc123
+      ready: true
 ```
 
 ## License

@@ -78,17 +78,17 @@ _items = [
                                 regionalPoolId: _ipv6_private_pool_id
                                 scopeId: _ipam_private_scope_id
                                 vpc: {
-                                    netmaskLength: 48
+                                    netmaskLength: 64
                                 }
                                 subnets: {
                                     availabilityZones: ["a", "b"]
                                     public: {
                                         enabled: True
-                                        netmaskLength: 64
+                                        netmaskLength: 72
                                     }
                                     private: {
                                         enabled: True
-                                        netmaskLength: 64
+                                        netmaskLength: 72
                                     }
                                 }
                             }

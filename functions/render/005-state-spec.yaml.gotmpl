@@ -57,7 +57,7 @@
 {{ $ipv4AllocationEnabled := $ipv4Allocation.enabled | default false }}
 {{ $ipv4RegionalPoolId := $ipv4Allocation.regionalPoolId | default "" }}
 {{ $ipv4ScopeId := $ipv4Allocation.scopeId | default "" }}
-{{ $ipv4Locale := $ipv4Allocation.locale | default "" }}
+{{ $ipv4Locale := $ipv4Allocation.locale | default $awsRegion }}
 {{ $ipv4AllocVpc := $ipv4Allocation.vpc | default (dict) }}
 {{ $ipv4VpcNetmask := $ipv4AllocVpc.netmaskLength | default 16 }}
 {{ $ipv4AllocSubnetsConfig := $ipv4Allocation.subnets | default (dict) }}
@@ -74,7 +74,7 @@
 {{ $ipv6UlaAllocationEnabled := $ipv6UlaAllocation.enabled | default false }}
 {{ $ipv6UlaRegionalPoolId := $ipv6UlaAllocation.regionalPoolId | default "" }}
 {{ $ipv6UlaScopeId := $ipv6UlaAllocation.scopeId | default "" }}
-{{ $ipv6UlaLocale := $ipv6UlaAllocation.locale | default "" }}
+{{ $ipv6UlaLocale := $ipv6UlaAllocation.locale | default $awsRegion }}
 {{ $ipv6UlaAllocVpc := $ipv6UlaAllocation.vpc | default (dict) }}
 {{ $ipv6UlaVpcNetmask := $ipv6UlaAllocVpc.netmaskLength | default 48 }}
 {{ $ipv6UlaAllocSubnetsConfig := $ipv6UlaAllocation.subnets | default (dict) }}
