@@ -1,19 +1,26 @@
 # code: language=yaml
+#
+# Extract spec values into local variables
+# This is the first state file - extracts all spec configuration
+# Depends on: 00-04 ($observed namespace)
+#
 
 {{ $xr := getCompositeResource . }}
 {{ $metadata := $xr.metadata | default (dict) }}
 {{ $spec := $xr.spec | default (dict) }}
 
-# Core identification
+# ==============================================================================
+# Core Identification (from spec)
+# ==============================================================================
 {{ $networkName := $metadata.name | default "network" }}
 {{ $managementPolicies := $spec.managementPolicies | default (list "*") }}
 
-# Provider configuration (single provider pattern)
+# Provider configuration
 {{ $providerConfigRef := $spec.providerConfigRef | default (dict) }}
 {{ $providerConfigName := $providerConfigRef.name | default "default" }}
 {{ $providerConfigKind := $providerConfigRef.kind | default "ProviderConfig" }}
 
-# AWS configuration (top-level since this is an AWS XRD)
+# AWS configuration
 {{ $awsRegion := $spec.region }}
 {{ $awsAccountId := $spec.accountId | default "" }}
 
@@ -22,49 +29,27 @@
 {{ $userTags := $spec.tags | default (dict) }}
 {{ $awsTags := merge (dict) $defaultTags $userTags }}
 
-# VPC configuration
+# ==============================================================================
+# VPC Configuration (from spec)
+# ==============================================================================
 {{ $vpc := $spec.vpc | default (dict) }}
-{{ $vpcCidr := $vpc.cidr | default "" }}
+{{ $vpcCidrSpec := $vpc.cidr | default "" }}
 {{ $vpcForProvider := $vpc.forProvider | default (dict) }}
 {{ $enableDnsHostnames := $vpcForProvider.enableDnsHostnames | default true }}
 {{ $enableDnsSupport := $vpcForProvider.enableDnsSupport | default true }}
 
 # IPv6 configuration
 {{ $vpcIpv6 := $vpc.ipv6 | default (dict) }}
-
-# ULA IPv6
 {{ $ulaIpv6 := $vpcIpv6.ula | default (dict) }}
 {{ $ulaEnabled := $ulaIpv6.enabled | default false }}
 {{ $ulaCidr := $ulaIpv6.cidr | default "" }}
 {{ $ulaIpamPoolId := $ulaIpv6.ipamPoolId | default "" }}
-
-# Amazon-provided IPv6
 {{ $amazonIpv6 := $vpcIpv6.amazonProvided | default (dict) }}
 {{ $amazonIpv6Enabled := $amazonIpv6.enabled | default false }}
 
-# NAT configuration
-{{ $nat := $spec.nat | default (dict) }}
-{{ $natEnabled := $nat.enabled | default false }}
-{{ $natStrategy := $nat.strategy | default "SingleAz" }}
-{{ $natStrategyUpper := upper $natStrategy }}
-
-# Flow Logs configuration
-{{ $flowLogs := $spec.flowLogs | default (dict) }}
-{{ $flowLogsEnabled := $flowLogs.enabled | default false }}
-{{ $flowLogsConfig := $flowLogs.config | default (dict) }}
-{{ $flowLogsDestination := $flowLogsConfig.destination | default "cloudwatch" }}
-{{ $flowLogsDestinationArn := $flowLogsConfig.logDestinationArn | default "" }}
-{{ $flowLogsIamRoleArn := $flowLogsConfig.iamRoleArn | default "" }}
-{{ $flowLogsTrafficType := $flowLogsConfig.trafficType | default "ALL" }}
-
-# Transit Gateway configuration
-{{ $transitGateway := $spec.transitGateway | default (dict) }}
-{{ $tgwEnabled := $transitGateway.enabled | default false }}
-{{ $tgwConfig := $transitGateway.config | default (dict) }}
-{{ $tgwId := $tgwConfig.tgwId | default "" }}
-{{ $tgwRouteTablePropagation := $tgwConfig.routeTablePropagation | default true }}
-
-# Network Allocations configuration
+# ==============================================================================
+# IPAM Allocation Configuration (from spec)
+# ==============================================================================
 {{ $networkAllocations := $spec.networkAllocations | default (dict) }}
 
 # IPv4 allocation
@@ -101,28 +86,35 @@
 {{ $ipv6UlaAllocPrivateEnabled := $ipv6UlaAllocPrivate.enabled | default true }}
 {{ $ipv6UlaAllocPrivateNetmask := $ipv6UlaAllocPrivate.netmaskLength | default 64 }}
 
-# Derived IPv6 flags (after allocation config is parsed)
-{{ $hasIpv6 := or $ulaEnabled $amazonIpv6Enabled $ipv6UlaAllocationEnabled }}
-{{ $isDualStack := $hasIpv6 }}
+# ==============================================================================
+# NAT Configuration (from spec)
+# ==============================================================================
+{{ $nat := $spec.nat | default (dict) }}
+{{ $natEnabled := $nat.enabled | default false }}
+{{ $natStrategy := $nat.strategy | default "SingleAz" }}
+{{ $natStrategyUpper := upper $natStrategy }}
 
-# Placeholders for observed subnet CIDRs (populated from IPAM allocations in 10-observed-values)
-{{ $ipv4AllocSubnets := dict }}
-{{ $ipv6UlaAllocSubnets := dict }}
+# ==============================================================================
+# Flow Logs Configuration (from spec)
+# ==============================================================================
+{{ $flowLogs := $spec.flowLogs | default (dict) }}
+{{ $flowLogsEnabled := $flowLogs.enabled | default false }}
+{{ $flowLogsConfig := $flowLogs.config | default (dict) }}
+{{ $flowLogsDestination := $flowLogsConfig.destination | default "cloudwatch" }}
+{{ $flowLogsDestinationArn := $flowLogsConfig.logDestinationArn | default "" }}
+{{ $flowLogsIamRoleArn := $flowLogsConfig.iamRoleArn | default "" }}
+{{ $flowLogsTrafficType := $flowLogsConfig.trafficType | default "ALL" }}
 
-# Placeholders for IPAM pool readiness (populated in 10-observed-values)
-{{ $ipv4SubnetPoolReady := false }}
-{{ $ipv4SubnetPoolId := "" }}
-{{ $ipv6SubnetPoolReady := false }}
-{{ $ipv6SubnetPoolId := "" }}
+# ==============================================================================
+# Transit Gateway Configuration (from spec)
+# ==============================================================================
+{{ $transitGateway := $spec.transitGateway | default (dict) }}
+{{ $tgwEnabled := $transitGateway.enabled | default false }}
+{{ $tgwConfig := $transitGateway.config | default (dict) }}
+{{ $tgwId := $tgwConfig.tgwId | default "" }}
+{{ $tgwRouteTablePropagation := $tgwConfig.routeTablePropagation | default true }}
 
-# Placeholders for subnet/NAT/route table configs (populated in 12-desired-values-subnets)
-{{ $publicSubnets := list }}
-{{ $privateSubnets := list }}
-{{ $natConfigsForCreation := list }}
-{{ $privateRouteTables := list }}
-
-# Derived: using any allocation
-{{ $usingAllocations := or $ipv4AllocationEnabled $ipv6UlaAllocationEnabled }}
-
-# Resource naming
-{{ $publicRouteTableName := printf "%s-public" $networkName }}
+# ==============================================================================
+# Subnets spec (for manual mode)
+# ==============================================================================
+{{ $subnetsSpec := $spec.subnets | default (list) }}

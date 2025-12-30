@@ -1,0 +1,146 @@
+# code: language=yaml
+#
+# Internet Gateway (Step 6)
+# Creates IGW and default routes for public subnets
+# Depends on: $state, $observed
+#
+
+{{- if $state.render.igw }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: InternetGateway
+metadata:
+  name: {{ $state.network.name }}
+  annotations:
+    {{ setResourceNameAnnotation "internet-gateway" }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    vpcIdRef:
+      name: {{ $state.network.name }}
+    tags:
+      {{ $state.network.tags | toYaml | nindent 6 }}
+      Name: {{ $state.network.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+
+# Usage: VPC protects Internet Gateway
+{{- if and $observed.vpc.ready $observed.igw.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-vpc-protects-igw
+  annotations:
+    {{ setResourceNameAnnotation "usage-vpc-igw" }}
+spec:
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPC
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: InternetGateway
+    resourceRef:
+      name: {{ $state.network.name }}
+{{- end }}
+
+# Public IPv4 route to Internet Gateway
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: Route
+metadata:
+  name: {{ $state.network.name }}-public-default-ipv4
+  annotations:
+    {{ setResourceNameAnnotation "route-public-default-ipv4" }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    routeTableIdRef:
+      name: {{ $state.routing.publicRouteTableName }}
+    destinationCidrBlock: 0.0.0.0/0
+    gatewayIdRef:
+      name: {{ $state.network.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+
+# Usage: IGW protects public IPv4 route
+{{ $routeIpv4Obs := get $observed._readiness "route-public-default-ipv4" | default false }}
+{{- if and $observed.igw.ready $routeIpv4Obs }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-igw-protects-route-public-ipv4
+  annotations:
+    {{ setResourceNameAnnotation "usage-igw-route-public-ipv4" }}
+spec:
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: InternetGateway
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: Route
+    resourceRef:
+      name: {{ $state.network.name }}-public-default-ipv4
+{{- end }}
+
+{{- if $state.ipv6.enabled }}
+# Public IPv6 route to Internet Gateway
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: Route
+metadata:
+  name: {{ $state.network.name }}-public-default-ipv6
+  annotations:
+    {{ setResourceNameAnnotation "route-public-default-ipv6" }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    routeTableIdRef:
+      name: {{ $state.routing.publicRouteTableName }}
+    destinationIpv6CidrBlock: "::/0"
+    gatewayIdRef:
+      name: {{ $state.network.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+
+# Usage: IGW protects public IPv6 route
+{{ $routeIpv6Obs := get $observed._readiness "route-public-default-ipv6" | default false }}
+{{- if and $observed.igw.ready $routeIpv6Obs }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-igw-protects-route-public-ipv6
+  annotations:
+    {{ setResourceNameAnnotation "usage-igw-route-public-ipv6" }}
+spec:
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: InternetGateway
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: Route
+    resourceRef:
+      name: {{ $state.network.name }}-public-default-ipv6
+{{- end }}
+{{- end }}
+{{- end }}

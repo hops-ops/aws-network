@@ -255,7 +255,9 @@ _items = [
             ]
         }
     },
-    # Test network with IPAM allocations
+    # Test network with IPAM allocations (initial render - VPC only)
+    # IPAM pools, allocations, subnets, NAT, etc. only render after VPC is ready
+    # Full render sequence is tested via make validate:all with observed-resources
     metav1alpha1.CompositionTest {
         metadata.name: "test-network-with-allocations"
         spec: {
@@ -280,22 +282,6 @@ _items = [
                             ipv6IpamPoolId: "ipam-pool-0fedcba9876543210"
                             ipv6NetmaskLength: 48
                         }
-                    }
-                }
-                # NAT Gateway
-                {
-                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
-                    kind: "NATGateway"
-                    metadata: {
-                        name: "with-allocations-nat-a"
-                    }
-                }
-                # Egress-only IGW for IPv6
-                {
-                    apiVersion: "ec2.aws.m.upbound.io/v1beta1"
-                    kind: "EgressOnlyInternetGateway"
-                    metadata: {
-                        name: "with-allocations"
                     }
                 }
             ]

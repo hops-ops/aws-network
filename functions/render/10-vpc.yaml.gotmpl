@@ -1,53 +1,52 @@
 # code: language=yaml
+#
+# VPC Resource (Step 1)
+# Creates VPC with IPv4 CIDR (explicit or from IPAM) and optional IPv6
+# Depends on: $state
+#
 
-# VPC with IPv4 CIDR (explicit or from IPAM allocation) and optional IPv6
-# Render when we have explicit CIDR OR when using IPAM allocation
-{{ $canRenderVpc := or (ne $vpcCidr "") $ipv4AllocationEnabled }}
-{{ if $canRenderVpc }}
+{{ if $state.render.vpc }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: VPC
 metadata:
-  name: {{ $networkName }}
+  name: {{ $state.network.name }}
   annotations:
     {{ setResourceNameAnnotation "vpc" }}
   labels:
-    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/network: {{ $state.network.name }}
 spec:
-  managementPolicies: {{ $managementPolicies | toJson }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
   forProvider:
-    region: {{ $awsRegion }}
-    enableDnsHostnames: {{ $enableDnsHostnames }}
-    enableDnsSupport: {{ $enableDnsSupport }}
-    {{- if $ipv4AllocationEnabled }}
+    region: {{ $state.network.region }}
+    enableDnsHostnames: {{ $state.vpc.enableDnsHostnames }}
+    enableDnsSupport: {{ $state.vpc.enableDnsSupport }}
+    {{- if $state.ipam.ipv4.enabled }}
     # Allocate IPv4 CIDR from IPAM pool
-    ipv4IpamPoolId: {{ $ipv4RegionalPoolId }}
-    ipv4NetmaskLength: {{ $ipv4VpcNetmask }}
+    ipv4IpamPoolId: {{ $state.ipam.ipv4.regionalPoolId }}
+    ipv4NetmaskLength: {{ $state.ipam.ipv4.vpcNetmask }}
     {{- else }}
     # Use explicit CIDR
-    cidrBlock: {{ $vpcCidr }}
+    cidrBlock: {{ $state.vpc.cidr }}
     {{- end }}
-    {{- if $amazonIpv6Enabled }}
+    {{- if $state.ipv6.amazon.enabled }}
     assignGeneratedIpv6CidrBlock: true
     {{- end }}
-    {{- if $ipv6UlaAllocationEnabled }}
+    {{- if $state.ipam.ipv6Ula.enabled }}
     # Allocate IPv6 ULA CIDR from IPAM pool
-    ipv6IpamPoolId: {{ $ipv6UlaRegionalPoolId }}
-    ipv6NetmaskLength: {{ $ipv6UlaVpcNetmask }}
-    {{- else if and $ulaEnabled $ulaIpamPoolId }}
+    ipv6IpamPoolId: {{ $state.ipam.ipv6Ula.regionalPoolId }}
+    ipv6NetmaskLength: {{ $state.ipam.ipv6Ula.vpcNetmask }}
+    {{- else if and $state.ipv6.ula.enabled $state.ipv6.ula.ipamPoolId }}
     # Use explicit ULA IPAM pool reference
-    ipv6IpamPoolId: {{ $ulaIpamPoolId }}
-    {{- if $ulaCidr }}
-    ipv6CidrBlock: {{ $ulaCidr }}
+    ipv6IpamPoolId: {{ $state.ipv6.ula.ipamPoolId }}
+    {{- if $state.ipv6.ula.cidr }}
+    ipv6CidrBlock: {{ $state.ipv6.ula.cidr }}
     {{- end }}
     {{- end }}
     tags:
-      {{ $awsTags | toYaml | nindent 6 }}
-      Name: {{ $networkName }}
-    {{- with $vpcForProvider }}
-    {{ toYaml . | nindent 4 }}
-    {{- end }}
+      {{ $state.network.tags | toYaml | nindent 6 }}
+      Name: {{ $state.network.name }}
   providerConfigRef:
-    name: {{ $providerConfigName }}
-    kind: {{ $providerConfigKind }}
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
 {{ end }}

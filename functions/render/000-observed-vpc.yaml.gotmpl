@@ -1,0 +1,67 @@
+# code: language=yaml
+#
+# Initialize $observed namespace and extract VPC observed values
+# This is the first file in the pipeline - it initializes $observed which subsequent files extend
+#
+
+{{ $raw := $.observed.resources | default (dict) }}
+
+# ==============================================================================
+# Resource Readiness Helper
+# ==============================================================================
+{{ $readiness := dict }}
+{{ range $name, $entry := $raw }}
+  {{ $ready := false }}
+  {{ $resource := $entry.resource | default (dict) }}
+  {{ $status := $resource.status | default (dict) }}
+  {{ $conditions := $status.conditions | default (list) }}
+  {{ range $conditions }}
+    {{ if and (eq (get . "type") "Ready") (eq (get . "status") "True") }}
+      {{ $ready = true }}
+    {{ end }}
+  {{ end }}
+  {{ $readiness = merge $readiness (dict $name $ready) }}
+{{ end }}
+
+# ==============================================================================
+# Initialize $observed namespace
+# ==============================================================================
+{{ $observed := dict }}
+
+# ==============================================================================
+# VPC Observed Values
+# ==============================================================================
+{{ $vpcEntry := get $raw "vpc" | default (dict) }}
+{{ $vpcResource := $vpcEntry.resource | default (dict) }}
+{{ $vpcStatus := $vpcResource.status | default (dict) }}
+{{ $vpcAtProvider := $vpcStatus.atProvider | default (dict) }}
+
+# Extract VPC IPv4 CIDR
+{{ $vpcId := $vpcAtProvider.id | default "" }}
+{{ $vpcCidrBlock := $vpcAtProvider.cidrBlock | default "" }}
+{{ $vpcReady := get $readiness "vpc" | default false }}
+
+# Extract Amazon-provided IPv6 CIDR (from ipv6CidrBlockAssociationSet)
+{{ $vpcAmazonIpv6Cidr := "" }}
+{{ range $vpcAtProvider.ipv6CidrBlockAssociationSet | default (list) }}
+  {{ $ipv6State := .ipv6CidrBlockState | default (dict) }}
+  {{ if eq ($ipv6State.state | default "") "associated" }}
+    {{ $vpcAmazonIpv6Cidr = .ipv6CidrBlock | default "" }}
+  {{ end }}
+{{ end }}
+
+# Extract ULA IPv6 CIDR (from VPC's ipv6CidrBlock when using IPAM pool)
+{{ $vpcUlaIpv6Cidr := $vpcAtProvider.ipv6CidrBlock | default "" }}
+
+# Build VPC observed state
+{{ $observed = merge $observed (dict "vpc" (dict
+  "id" $vpcId
+  "cidr" $vpcCidrBlock
+  "ipv6AmazonCidr" $vpcAmazonIpv6Cidr
+  "ipv6UlaCidr" $vpcUlaIpv6Cidr
+  "ready" $vpcReady
+)) }}
+
+# Store readiness map for use by other templates
+{{ $observed = merge $observed (dict "_readiness" $readiness) }}
+{{ $observed = merge $observed (dict "_raw" $raw) }}

@@ -1,0 +1,80 @@
+# code: language=yaml
+#
+# Build routing state (NAT gateways + route tables)
+# Depends on: 005-state-spec (spec variables), 006-state-subnets (subnet lists)
+#
+
+# ==============================================================================
+# NAT Gateway Configuration
+# ==============================================================================
+{{ $natDesired := and $natEnabled $hasPublicSubnets $hasPrivateSubnets (ne $natStrategyUpper "NONE") }}
+{{ $singleNatSuffix := "" }}
+{{ if gt (len $availabilityZones) 0 }}
+  {{ $singleNatSuffix = index $availabilityZones 0 }}
+{{ end }}
+
+{{ $natConfigsForCreation := list }}
+{{ $natConfigsByAz := dict }}
+
+{{ if $natDesired }}
+  {{ range $subnet := $publicSubnets }}
+    {{ $azSuffix := $subnet.azSuffix }}
+
+    # Determine if this AZ needs a NAT
+    {{ $needsNat := false }}
+    {{ if eq $natStrategyUpper "HIGHLYAVAILABLE" }}
+      {{ $needsNat = true }}
+    {{ else if eq $natStrategyUpper "SINGLEAZ" }}
+      {{ $needsNat = eq $azSuffix $singleNatSuffix }}
+    {{ end }}
+
+    {{ if and $needsNat (not (hasKey $natConfigsByAz $azSuffix)) }}
+      {{ $natName := printf "%s-nat-%s" $networkName $azSuffix }}
+      {{ $natConfig := dict
+        "name" $natName
+        "resourceName" (printf "nat-%s" $azSuffix)
+        "eipName" (printf "%s-nat-eip-%s" $networkName $azSuffix)
+        "eipResourceName" (printf "eip-%s" $azSuffix)
+        "publicSubnet" $subnet.name
+        "publicSubnetResourceName" $subnet.resourceName
+        "azSuffix" $azSuffix
+      }}
+      {{ $natConfigsForCreation = append $natConfigsForCreation $natConfig }}
+      {{ $_ := set $natConfigsByAz $azSuffix $natConfig }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+# ==============================================================================
+# Private Route Table Configuration
+# ==============================================================================
+{{ $privateRtByAz := dict }}
+{{ $privateRouteTables := list }}
+
+{{ range $subnet := $privateSubnets }}
+  {{ $azSuffix := $subnet.azSuffix }}
+  {{ if not (hasKey $privateRtByAz $azSuffix) }}
+    {{ $rtName := printf "%s-private-rt-%s" $networkName $azSuffix }}
+    {{ $rtConfig := dict
+      "name" $rtName
+      "resourceName" (printf "rt-private-%s" $azSuffix)
+      "azSuffix" $azSuffix
+    }}
+    {{ $privateRouteTables = append $privateRouteTables $rtConfig }}
+    {{ $_ := set $privateRtByAz $azSuffix $rtConfig }}
+  {{ end }}
+{{ end }}
+
+# Map NAT gateways to private route tables
+{{ range $i, $rt := $privateRouteTables }}
+  {{ $azSuffix := $rt.azSuffix }}
+  {{ $targetNatAz := $azSuffix }}
+  {{ if eq $natStrategyUpper "SINGLEAZ" }}
+    {{ $targetNatAz = $singleNatSuffix }}
+  {{ end }}
+  {{ $natConfig := get $natConfigsByAz $targetNatAz }}
+  {{ if $natConfig }}
+    {{ $_ := set $rt "natGateway" $natConfig }}
+  {{ end }}
+{{ end }}
+

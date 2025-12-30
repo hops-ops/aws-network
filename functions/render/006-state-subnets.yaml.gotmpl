@@ -1,0 +1,197 @@
+# code: language=yaml
+#
+# Build subnet state from spec + $observed
+# Mode detection, VPC CIDR abstraction, and subnet list building
+# Depends on: 000-004 ($observed), 005-state-spec (all spec variables)
+#
+
+# ==============================================================================
+# Mode Detection
+# ==============================================================================
+{{ $ipamMode := $ipv4AllocationEnabled }}
+{{ $manualMode := and (not $ipamMode) (ne $vpcCidrSpec "") }}
+
+# Enable ULA flag when using allocation (for IPv6 detection)
+{{ if $ipv6UlaAllocationEnabled }}
+  {{ $ulaEnabled = true }}
+{{ end }}
+
+# IPv6 flags
+{{ $hasIpv6 := or $ulaEnabled $amazonIpv6Enabled $ipv6UlaAllocationEnabled }}
+
+# ==============================================================================
+# VPC CIDR - Abstracted Source
+# The key insight: downstream templates don't care where the CIDR comes from
+# ==============================================================================
+{{ $vpcCidr := "" }}
+{{ if $manualMode }}
+  {{ $vpcCidr = $vpcCidrSpec }}
+{{ else }}
+  # In IPAM mode, use observed CIDR (may be empty until VPC is created)
+  {{ $vpcCidr = $observed.vpc.cidr }}
+{{ end }}
+
+# ==============================================================================
+# Build Subnet Lists
+# ==============================================================================
+{{ $publicSubnets := list }}
+{{ $privateSubnets := list }}
+{{ $availabilityZones := list }}
+
+# ------------------------------------------------------------------------------
+# Manual Mode: Build subnet configs from explicit spec.subnets[]
+# ------------------------------------------------------------------------------
+{{ if $manualMode }}
+  {{ $azSet := dict }}
+
+  {{ range $subnet := $subnetsSpec }}
+    {{ $subnetName := $subnet.name | default "" }}
+    {{ $subnetCidr := $subnet.cidr | default "" }}
+    {{ $subnetAz := $subnet.availabilityZone | default "" }}
+    {{ $isPublic := $subnet.public | default false }}
+    {{ $subnetIpv6 := $subnet.ipv6 | default (dict) }}
+    {{ $subnetUlaCidr := $subnetIpv6.ulaCidr | default "" }}
+    {{ $subnetAmazonCidr := $subnetIpv6.amazonProvidedCidr | default "" }}
+
+    # Normalize AZ to suffix only
+    {{ $azSuffix := $subnetAz }}
+    {{ if hasPrefix $awsRegion $subnetAz }}
+      {{ $azSuffix = trimPrefix $awsRegion $subnetAz }}
+    {{ end }}
+    {{ $fullAz := printf "%s%s" $awsRegion $azSuffix }}
+
+    # Track unique AZs
+    {{ if not (hasKey $azSet $azSuffix) }}
+      {{ $_ := set $azSet $azSuffix true }}
+      {{ $availabilityZones = append $availabilityZones $azSuffix }}
+    {{ end }}
+
+    # Build tags
+    {{ $tier := "private" }}
+    {{ $mapPublicIp := false }}
+    {{ $k8sRoleTag := "kubernetes.io/role/internal-elb" }}
+    {{ if $isPublic }}
+      {{ $tier = "public" }}
+      {{ $mapPublicIp = true }}
+      {{ $k8sRoleTag = "kubernetes.io/role/elb" }}
+    {{ end }}
+
+    {{ $subnetTags := merge (dict) $awsTags (dict
+      "Name" $subnetName
+      "hops.ops.com.ai/tier" $tier
+      "hops.ops.com.ai/az" $azSuffix
+      $k8sRoleTag "1"
+    ) }}
+
+    {{ $config := dict
+      "name" $subnetName
+      "resourceName" (printf "subnet-%s" $subnetName)
+      "cidr" $subnetCidr
+      "az" $fullAz
+      "azSuffix" $azSuffix
+      "public" $isPublic
+      "mapPublicIpOnLaunch" $mapPublicIp
+      "tags" $subnetTags
+      "labels" (dict "hops.ops.com.ai/network" $networkName "hops.ops.com.ai/tier" $tier "hops.ops.com.ai/az" $azSuffix)
+      "ipv6UlaCidr" $subnetUlaCidr
+      "ipv6AmazonCidr" $subnetAmazonCidr
+    }}
+
+    {{ if $isPublic }}
+      {{ $publicSubnets = append $publicSubnets $config }}
+    {{ else }}
+      {{ $privateSubnets = append $privateSubnets $config }}
+    {{ end }}
+  {{ end }}
+
+  {{ $availabilityZones = $availabilityZones | sortAlpha }}
+{{ end }}
+
+# ------------------------------------------------------------------------------
+# IPAM Mode: Build subnet configs from observed IPAM allocations
+# ------------------------------------------------------------------------------
+{{ if $ipamMode }}
+  # Use IPv4 allocation AZs as the source of truth
+  {{ $availabilityZones = $ipv4AllocAzs | sortAlpha }}
+
+  # Get allocations from $observed namespace
+  {{ $ipv4Allocations := $observed.ipam.ipv4.allocations }}
+  {{ $ipv6UlaAllocations := $observed.ipam.ipv6Ula.allocations }}
+
+  {{ range $az := $ipv4AllocAzs }}
+    {{ $fullAz := printf "%s%s" $awsRegion $az }}
+
+    # Public subnet
+    {{ if $ipv4AllocPublicEnabled }}
+      {{ $ipv4Cidr := get $ipv4Allocations (printf "public-%s" $az) | default "" }}
+      {{ $ipv6Cidr := get $ipv6UlaAllocations (printf "public-%s" $az) | default "" }}
+
+      # Only create subnet config when we have the CIDR from allocation
+      {{ if $ipv4Cidr }}
+        {{ $subnetName := printf "%s-public-%s" $networkName $az }}
+        {{ $subnetTags := merge (dict) $awsTags (dict
+          "Name" $subnetName
+          "hops.ops.com.ai/tier" "public"
+          "hops.ops.com.ai/az" $az
+          "kubernetes.io/role/elb" "1"
+        ) }}
+
+        {{ $config := dict
+          "name" $subnetName
+          "resourceName" (printf "subnet-public-%s" $az)
+          "cidr" $ipv4Cidr
+          "az" $fullAz
+          "azSuffix" $az
+          "public" true
+          "mapPublicIpOnLaunch" true
+          "tags" $subnetTags
+          "labels" (dict "hops.ops.com.ai/network" $networkName "hops.ops.com.ai/tier" "public" "hops.ops.com.ai/az" $az)
+          "ipv6UlaCidr" $ipv6Cidr
+          "ipv6AmazonCidr" ""
+        }}
+
+        {{ $publicSubnets = append $publicSubnets $config }}
+      {{ end }}
+    {{ end }}
+
+    # Private subnet
+    {{ if $ipv4AllocPrivateEnabled }}
+      {{ $ipv4Cidr := get $ipv4Allocations (printf "private-%s" $az) | default "" }}
+      {{ $ipv6Cidr := get $ipv6UlaAllocations (printf "private-%s" $az) | default "" }}
+
+      # Only create subnet config when we have the CIDR from allocation
+      {{ if $ipv4Cidr }}
+        {{ $subnetName := printf "%s-private-%s" $networkName $az }}
+        {{ $subnetTags := merge (dict) $awsTags (dict
+          "Name" $subnetName
+          "hops.ops.com.ai/tier" "private"
+          "hops.ops.com.ai/az" $az
+          "kubernetes.io/role/internal-elb" "1"
+        ) }}
+
+        {{ $config := dict
+          "name" $subnetName
+          "resourceName" (printf "subnet-private-%s" $az)
+          "cidr" $ipv4Cidr
+          "az" $fullAz
+          "azSuffix" $az
+          "public" false
+          "mapPublicIpOnLaunch" false
+          "tags" $subnetTags
+          "labels" (dict "hops.ops.com.ai/network" $networkName "hops.ops.com.ai/tier" "private" "hops.ops.com.ai/az" $az)
+          "ipv6UlaCidr" $ipv6Cidr
+          "ipv6AmazonCidr" ""
+        }}
+
+        {{ $privateSubnets = append $privateSubnets $config }}
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}
+
+# ==============================================================================
+# Derived Flags (from subnet lists)
+# ==============================================================================
+{{ $hasPublicSubnets := gt (len $publicSubnets) 0 }}
+{{ $hasPrivateSubnets := gt (len $privateSubnets) 0 }}
+

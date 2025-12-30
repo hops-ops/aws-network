@@ -1,112 +1,123 @@
 # code: language=yaml
+#
+# Status Output
+# Projects observed values and state into XR status
+# Depends on: $state, $observed
+#
+
+{{ $xr := getCompositeResource . }}
 
 ---
 apiVersion: {{ $xr.apiVersion }}
 kind: {{ $xr.kind }}
 status:
-  ready: {{ $vpcReady }}
-  {{- if $usingAllocations }}
+  ready: {{ $observed.vpc.ready }}
+  {{- if $state.mode.ipam }}
   allocations:
-    {{- if $ipv4AllocationEnabled }}
+    {{- if $state.ipam.ipv4.enabled }}
     ipv4:
-      ready: {{ $ipv4AllocReady }}
-      cidr: {{ $ipv4AllocCidr | default "Pending" }}
-      vpcPoolId: {{ $ipv4AllocVpcPoolId | default "Pending" }}
-      subnetPoolId: {{ $ipv4AllocSubnetPoolId | default "Pending" }}
-      {{- if gt (len $ipv4AllocSubnets) 0 }}
+      ready: {{ and $observed.vpc.ready $observed.ipam.ipv4.subnetPoolReady }}
+      cidr: {{ $observed.vpc.cidr | default "Pending" }}
+      vpcPoolId: {{ $state.ipam.ipv4.regionalPoolId | default "Pending" }}
+      subnetPoolId: {{ $observed.ipam.ipv4.subnetPoolId | default "Pending" }}
+      {{- if gt (len $observed.ipam.ipv4.allocations) 0 }}
       subnets:
-        {{ $ipv4AllocSubnets | toYaml | nindent 8 }}
+        {{ $observed.ipam.ipv4.allocations | toYaml | nindent 8 }}
       {{- end }}
     {{- end }}
-    {{- if $ipv6UlaAllocationEnabled }}
+    {{- if $state.ipam.ipv6Ula.enabled }}
     ipv6Ula:
-      ready: {{ $ipv6UlaAllocReady }}
-      cidr: {{ $ipv6UlaAllocCidr | default "Pending" }}
-      vpcPoolId: {{ $ipv6UlaAllocVpcPoolId | default "Pending" }}
-      subnetPoolId: {{ $ipv6UlaAllocSubnetPoolId | default "Pending" }}
-      {{- if gt (len $ipv6UlaAllocSubnets) 0 }}
+      ready: {{ and $observed.vpc.ready $observed.ipam.ipv6Ula.subnetPoolReady }}
+      cidr: {{ $observed.vpc.ipv6UlaCidr | default "Pending" }}
+      vpcPoolId: {{ $state.ipam.ipv6Ula.regionalPoolId | default "Pending" }}
+      subnetPoolId: {{ $observed.ipam.ipv6Ula.subnetPoolId | default "Pending" }}
+      {{- if gt (len $observed.ipam.ipv6Ula.allocations) 0 }}
       subnets:
-        {{ $ipv6UlaAllocSubnets | toYaml | nindent 8 }}
+        {{ $observed.ipam.ipv6Ula.allocations | toYaml | nindent 8 }}
       {{- end }}
     {{- end }}
   {{- end }}
   network:
-    name: {{ $networkName }}
-    region: {{ $awsRegion }}
-    vpcId: {{ $observedVpcId | default "Pending" }}
+    name: {{ $state.network.name }}
+    region: {{ $state.network.region }}
+    vpcId: {{ $observed.vpc.id | default "Pending" }}
     cidr:
-      ipv4: {{ $observedVpcCidr | default "Pending" }}
-      {{- if $ulaEnabled }}
-      ipv6Ula: {{ $observedUlaIpv6Cidr | default "Pending" }}
+      ipv4: {{ $observed.vpc.cidr | default "Pending" }}
+      {{- if $state.ipv6.ula.enabled }}
+      ipv6Ula: {{ $observed.vpc.ipv6UlaCidr | default "Pending" }}
       {{- end }}
-      {{- if $amazonIpv6Enabled }}
-      ipv6AmazonProvided: {{ $observedVpcIpv6Cidr | default "Pending" }}
+      {{- if $state.ipv6.amazon.enabled }}
+      ipv6AmazonProvided: {{ $observed.vpc.ipv6AmazonCidr | default "Pending" }}
       {{- end }}
     availabilityZones:
-    {{- range $az := $availabilityZones }}
-      - {{ $awsRegion }}{{ $az }}
+    {{- range $az := $state.availabilityZones }}
+      - {{ $state.network.region }}{{ $az }}
     {{- end }}
+    {{- if or $state.subnets.hasPublic $state.subnets.hasPrivate }}
     subnets:
-      {{- if $hasPublicSubnets }}
+      {{- if $state.subnets.hasPublic }}
       public:
-      {{- range $subnet := $publicSubnets }}
-        {{ $subnetObs := get $observedSubnets $subnet.resourceName | default (dict) }}
+      {{- range $subnet := $state.subnets.public }}
+        {{ $subnetObs := get $observed.subnets $subnet.resourceName | default (dict) }}
         - name: {{ $subnet.name }}
           id: {{ $subnetObs.id | default "Pending" }}
           availabilityZone: {{ $subnet.az }}
           ipv4CidrBlock: {{ $subnetObs.ipv4Cidr | default "Pending" }}
-          {{- if $hasIpv6 }}
+          {{- if $state.ipv6.enabled }}
           ipv6CidrBlock: {{ $subnetObs.ipv6Cidr | default "Pending" }}
           {{- end }}
       {{- end }}
       {{- end }}
-      {{- if $hasPrivateSubnets }}
+      {{- if $state.subnets.hasPrivate }}
       private:
-      {{- range $subnet := $privateSubnets }}
-        {{ $subnetObs := get $observedSubnets $subnet.resourceName | default (dict) }}
+      {{- range $subnet := $state.subnets.private }}
+        {{ $subnetObs := get $observed.subnets $subnet.resourceName | default (dict) }}
         - name: {{ $subnet.name }}
           id: {{ $subnetObs.id | default "Pending" }}
           availabilityZone: {{ $subnet.az }}
           ipv4CidrBlock: {{ $subnetObs.ipv4Cidr | default "Pending" }}
-          {{- if $hasIpv6 }}
+          {{- if $state.ipv6.enabled }}
           ipv6CidrBlock: {{ $subnetObs.ipv6Cidr | default "Pending" }}
           {{- end }}
       {{- end }}
       {{- end }}
+    {{- end }}
+    {{- if or $state.subnets.hasPublic $state.subnets.hasPrivate }}
     routeTables:
-      {{- if $hasPublicSubnets }}
+      {{- if $state.subnets.hasPublic }}
       public:
-        - name: {{ $publicRouteTableName }}
-          id: {{ $observedPublicRtId | default "Pending" }}
+        - name: {{ $state.routing.publicRouteTableName }}
+          id: {{ $observed.rt.public.id | default "Pending" }}
       {{- end }}
-      {{- if $hasPrivateSubnets }}
+      {{- if $state.subnets.hasPrivate }}
       private:
-      {{- range $rt := $privateRouteTables }}
-        {{ $rtObs := get $observedRouteTables $rt.resourceName | default (dict) }}
+      {{- range $rt := $state.routing.privateRouteTables }}
+        {{ $rtObs := get $observed.rt.private $rt.resourceName | default (dict) }}
         - name: {{ $rt.name }}
           id: {{ $rtObs.id | default "Pending" }}
-          availabilityZone: {{ $awsRegion }}{{ $rt.azSuffix }}
+          availabilityZone: {{ $state.network.region }}{{ $rt.azSuffix }}
       {{- end }}
       {{- end }}
-    {{- if $renderNatGateways }}
+    {{- end }}
+    {{- if $state.render.nat }}
     natGateways:
-    {{- range $natConfig := $natConfigsForCreation }}
-      {{ $natObs := get $observedNatGateways $natConfig.resourceName | default (dict) }}
+    {{- range $natConfig := $state.nat.configs }}
+      {{ $natObs := get $observed.nat $natConfig.resourceName | default (dict) }}
       - name: {{ $natConfig.name }}
         id: {{ $natObs.id | default "Pending" }}
-        availabilityZone: {{ $awsRegion }}{{ $natConfig.azSuffix }}
+        availabilityZone: {{ $state.network.region }}{{ $natConfig.azSuffix }}
     {{- end }}
     {{- end }}
-    {{- if $renderInternetGateway }}
+    {{- if $state.render.igw }}
     internetGateway:
-      id: {{ $observedIgwId | default "Pending" }}
+      id: {{ $observed.igw.id | default "Pending" }}
     {{- end }}
-    {{- if $renderEgressOnlyIgw }}
+    {{- if $state.render.eigw }}
     egressOnlyInternetGateway:
-      id: {{ $observedEigwId | default "Pending" }}
+      id: {{ $observed.eigw.id | default "Pending" }}
     {{- end }}
-    {{- if and $tgwEnabled $tgwId }}
+    {{- if and $state.tgw.enabled $state.tgw.id }}
     transitGatewayAttachment:
-      id: {{ $observedTgwAttachmentId | default "Pending" }}
-      state: {{ $observedTgwAttachmentState | default "Pending" }}
+      id: {{ $observed.tgw.attachmentId | default "Pending" }}
+      state: {{ $observed.tgw.state | default "Pending" }}
     {{- end }}

@@ -1,0 +1,77 @@
+# code: language=yaml
+#
+# Egress-Only Internet Gateway (Step 6)
+# Creates EIGW for private IPv6 outbound traffic
+# Depends on: $state, $observed
+#
+
+{{- if $state.render.eigw }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: EgressOnlyInternetGateway
+metadata:
+  name: {{ $state.network.name }}
+  annotations:
+    {{ setResourceNameAnnotation "egress-only-igw" }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    vpcIdRef:
+      name: {{ $state.network.name }}
+    tags:
+      {{ $state.network.tags | toYaml | nindent 6 }}
+      Name: {{ $state.network.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+
+# Usage: VPC protects Egress-Only IGW
+{{- if and $observed.vpc.ready $observed.eigw.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-vpc-protects-eigw
+  annotations:
+    {{ setResourceNameAnnotation "usage-vpc-eigw" }}
+spec:
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPC
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: EgressOnlyInternetGateway
+    resourceRef:
+      name: {{ $state.network.name }}
+{{- end }}
+
+# Private IPv6 routes to Egress-Only IGW (one per private route table)
+{{- range $rt := $state.routing.privateRouteTables }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: Route
+metadata:
+  name: {{ $state.network.name }}-{{ $rt.resourceName }}-default-ipv6
+  annotations:
+    {{ setResourceNameAnnotation (printf "route-%s-default-ipv6" $rt.resourceName) }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    routeTableIdRef:
+      name: {{ $rt.name }}
+    destinationIpv6CidrBlock: "::/0"
+    egressOnlyGatewayIdRef:
+      name: {{ $state.network.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+{{- end }}
+{{- end }}

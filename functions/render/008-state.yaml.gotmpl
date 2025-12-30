@@ -1,0 +1,153 @@
+# code: language=yaml
+#
+# Build final $state namespace
+# Render flags and unified state dict assembly
+# Depends on: 005 (spec), 006 (subnets), 007 (routing)
+#
+
+# ==============================================================================
+# Render Flags - Clean conditionals for resource templates
+# ==============================================================================
+{{ $renderVpc := true }}
+{{ $renderIpamPools := $ipamMode }}
+{{ $renderIpamPoolCidrs := and $ipamMode $observed.vpc.ready }}
+{{ $renderIpamAllocations := and $ipamMode $observed.ipam.ipv4.subnetPoolReady }}
+{{ $renderSubnets := or $manualMode (gt (len $observed.ipam.ipv4.allocations) 0) }}
+{{ $renderInternetGateway := $hasPublicSubnets }}
+{{ $renderEgressOnlyIgw := and $hasIpv6 $hasPrivateSubnets }}
+{{ $renderNatGateways := and $natDesired (gt (len $natConfigsForCreation) 0) }}
+{{ $renderRouteTables := or $hasPublicSubnets $hasPrivateSubnets }}
+{{ $renderFlowLogs := and $flowLogsEnabled (ne $flowLogsDestinationArn "") }}
+{{ $renderTgw := $tgwEnabled }}
+
+# ==============================================================================
+# Build $state Namespace
+# ==============================================================================
+{{ $state := dict
+  "mode" (dict
+    "ipam" $ipamMode
+    "manual" $manualMode
+  )
+
+  "network" (dict
+    "name" $networkName
+    "region" $awsRegion
+    "accountId" $awsAccountId
+    "tags" $awsTags
+  )
+
+  "vpc" (dict
+    "cidr" $vpcCidr
+    "cidrSpec" $vpcCidrSpec
+    "enableDnsHostnames" $enableDnsHostnames
+    "enableDnsSupport" $enableDnsSupport
+    "ready" $observed.vpc.ready
+  )
+
+  "ipv6" (dict
+    "enabled" $hasIpv6
+    "ula" (dict
+      "enabled" $ulaEnabled
+      "cidr" $ulaCidr
+      "ipamPoolId" $ulaIpamPoolId
+    )
+    "amazon" (dict
+      "enabled" $amazonIpv6Enabled
+    )
+  )
+
+  "subnets" (dict
+    "public" $publicSubnets
+    "private" $privateSubnets
+    "hasPublic" $hasPublicSubnets
+    "hasPrivate" $hasPrivateSubnets
+  )
+
+  "availabilityZones" $availabilityZones
+
+  "nat" (dict
+    "enabled" $natEnabled
+    "desired" $natDesired
+    "strategy" $natStrategyUpper
+    "configs" $natConfigsForCreation
+    "configsByAz" $natConfigsByAz
+    "singleNatSuffix" $singleNatSuffix
+  )
+
+  "flowLogs" (dict
+    "enabled" $flowLogsEnabled
+    "destination" $flowLogsDestination
+    "destinationArn" $flowLogsDestinationArn
+    "iamRoleArn" $flowLogsIamRoleArn
+    "trafficType" $flowLogsTrafficType
+  )
+
+  "tgw" (dict
+    "enabled" $tgwEnabled
+    "id" $tgwId
+    "routeTablePropagation" $tgwRouteTablePropagation
+  )
+
+  "routing" (dict
+    "publicRouteTableName" (printf "%s-public" $networkName)
+    "privateRouteTables" $privateRouteTables
+    "privateRtByAz" $privateRtByAz
+  )
+
+  "providerConfig" (dict
+    "name" $providerConfigName
+    "kind" $providerConfigKind
+  )
+
+  "managementPolicies" $managementPolicies
+
+  "render" (dict
+    "vpc" $renderVpc
+    "ipamPools" $renderIpamPools
+    "ipamPoolCidrs" $renderIpamPoolCidrs
+    "ipamAllocations" $renderIpamAllocations
+    "subnets" $renderSubnets
+    "igw" $renderInternetGateway
+    "eigw" $renderEgressOnlyIgw
+    "nat" $renderNatGateways
+    "routeTables" $renderRouteTables
+    "flowLogs" $renderFlowLogs
+    "tgw" $renderTgw
+  )
+
+  "ipam" (dict
+    "ipv4" (dict
+      "enabled" $ipv4AllocationEnabled
+      "regionalPoolId" $ipv4RegionalPoolId
+      "scopeId" $ipv4ScopeId
+      "locale" $ipv4Locale
+      "vpcNetmask" $ipv4VpcNetmask
+      "azs" $ipv4AllocAzs
+      "public" (dict
+        "enabled" $ipv4AllocPublicEnabled
+        "netmask" $ipv4AllocPublicNetmask
+      )
+      "private" (dict
+        "enabled" $ipv4AllocPrivateEnabled
+        "netmask" $ipv4AllocPrivateNetmask
+      )
+    )
+    "ipv6Ula" (dict
+      "enabled" $ipv6UlaAllocationEnabled
+      "regionalPoolId" $ipv6UlaRegionalPoolId
+      "scopeId" $ipv6UlaScopeId
+      "locale" $ipv6UlaLocale
+      "vpcNetmask" $ipv6UlaVpcNetmask
+      "azs" $ipv6UlaAllocAzs
+      "public" (dict
+        "enabled" $ipv6UlaAllocPublicEnabled
+        "netmask" $ipv6UlaAllocPublicNetmask
+      )
+      "private" (dict
+        "enabled" $ipv6UlaAllocPrivateEnabled
+        "netmask" $ipv6UlaAllocPrivateNetmask
+      )
+    )
+  )
+}}
+

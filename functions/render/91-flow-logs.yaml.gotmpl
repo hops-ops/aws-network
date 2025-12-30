@@ -1,0 +1,41 @@
+# code: language=yaml
+#
+# Flow Logs (Step 9)
+# Creates VPC Flow Logs for network traffic monitoring
+# Depends on: $state
+#
+
+{{- if $state.render.flowLogs }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: FlowLog
+metadata:
+  name: {{ $state.network.name }}-flow-log
+  annotations:
+    {{ setResourceNameAnnotation "flow-log" }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    vpcIdRef:
+      name: {{ $state.network.name }}
+    trafficType: {{ $state.flowLogs.trafficType }}
+    {{- if eq $state.flowLogs.destination "cloudwatch" }}
+    logDestinationType: cloud-watch-logs
+    logDestination: {{ $state.flowLogs.destinationArn }}
+    {{- if $state.flowLogs.iamRoleArn }}
+    iamRoleArn: {{ $state.flowLogs.iamRoleArn }}
+    {{- end }}
+    {{- else if eq $state.flowLogs.destination "s3" }}
+    logDestinationType: s3
+    logDestination: {{ $state.flowLogs.destinationArn }}
+    {{- end }}
+    tags:
+      {{ $state.network.tags | toYaml | nindent 6 }}
+      Name: {{ $state.network.name }}-flow-log
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+{{- end }}

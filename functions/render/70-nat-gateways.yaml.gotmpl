@@ -1,7 +1,12 @@
 # code: language=yaml
+#
+# NAT Gateways (Step 7)
+# Creates EIPs, NAT Gateways, and private subnet routes
+# Depends on: $state, $observed
+#
 
-{{- if $renderNatGateways }}
-{{- range $natConfig := $natConfigsForCreation }}
+{{- if $state.render.nat }}
+{{- range $natConfig := $state.nat.configs }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: EIP
@@ -10,18 +15,18 @@ metadata:
   annotations:
     {{ setResourceNameAnnotation $natConfig.eipResourceName }}
   labels:
-    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/network: {{ $state.network.name }}
 spec:
-  managementPolicies: {{ $managementPolicies | toJson }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
   forProvider:
-    region: {{ $awsRegion }}
+    region: {{ $state.network.region }}
     domain: vpc
     tags:
-      {{ $awsTags | toYaml | nindent 6 }}
+      {{ $state.network.tags | toYaml | nindent 6 }}
       Name: {{ $natConfig.eipName }}
   providerConfigRef:
-    name: {{ $providerConfigName }}
-    kind: {{ $providerConfigKind }}
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: NATGateway
@@ -30,35 +35,35 @@ metadata:
   annotations:
     {{ setResourceNameAnnotation $natConfig.resourceName }}
   labels:
-    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/network: {{ $state.network.name }}
 spec:
-  managementPolicies: {{ $managementPolicies | toJson }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
   forProvider:
-    region: {{ $awsRegion }}
+    region: {{ $state.network.region }}
     connectivityType: public
     allocationIdRef:
       name: {{ $natConfig.eipName }}
     subnetIdRef:
       name: {{ $natConfig.publicSubnet }}
     tags:
-      {{ $awsTags | toYaml | nindent 6 }}
+      {{ $state.network.tags | toYaml | nindent 6 }}
       Name: {{ $natConfig.name }}
   providerConfigRef:
-    name: {{ $providerConfigName }}
-    kind: {{ $providerConfigKind }}
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
 
 # Usages: Protect NAT Gateway dependencies
-{{ $publicSubnetReady := get $resourceReadiness $natConfig.publicSubnetResourceName | default false }}
-{{ $natReady := get $resourceReadiness $natConfig.resourceName | default false }}
-{{ $eipReady := get $resourceReadiness $natConfig.eipResourceName | default false }}
+{{ $publicSubnetObs := get $observed.subnets $natConfig.publicSubnetResourceName | default (dict) }}
+{{ $natObs := get $observed.nat $natConfig.resourceName | default (dict) }}
+{{ $eipObs := get $observed.eip $natConfig.eipResourceName | default (dict) }}
 
 # Usage: Public subnet protects NAT Gateway
-{{- if and $publicSubnetReady $natReady }}
+{{- if and $publicSubnetObs.ready $natObs.ready }}
 ---
 apiVersion: protection.crossplane.io/v1beta1
 kind: Usage
 metadata:
-  name: {{ $networkName }}-{{ $natConfig.publicSubnetResourceName }}-protects-{{ $natConfig.resourceName }}
+  name: {{ $state.network.name }}-{{ $natConfig.publicSubnetResourceName }}-protects-{{ $natConfig.resourceName }}
   annotations:
     {{ setResourceNameAnnotation (printf "usage-%s-%s" $natConfig.publicSubnetResourceName $natConfig.resourceName) }}
 spec:
@@ -75,12 +80,12 @@ spec:
 {{- end }}
 
 # Usage: EIP protects NAT Gateway
-{{- if and $eipReady $natReady }}
+{{- if and $eipObs.ready $natObs.ready }}
 ---
 apiVersion: protection.crossplane.io/v1beta1
 kind: Usage
 metadata:
-  name: {{ $networkName }}-{{ $natConfig.eipResourceName }}-protects-{{ $natConfig.resourceName }}
+  name: {{ $state.network.name }}-{{ $natConfig.eipResourceName }}-protects-{{ $natConfig.resourceName }}
   annotations:
     {{ setResourceNameAnnotation (printf "usage-%s-%s" $natConfig.eipResourceName $natConfig.resourceName) }}
 spec:
@@ -98,30 +103,30 @@ spec:
 {{- end }}
 
 # Private IPv4 routes to NAT Gateways (one per private route table)
-{{- range $rt := $privateRouteTables }}
+{{- range $rt := $state.routing.privateRouteTables }}
 {{- $natConfig := $rt.natGateway }}
 {{- if $natConfig }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Route
 metadata:
-  name: {{ $networkName }}-{{ $rt.resourceName }}-default-ipv4
+  name: {{ $state.network.name }}-{{ $rt.resourceName }}-default-ipv4
   annotations:
     {{ setResourceNameAnnotation (printf "route-%s-default-ipv4" $rt.resourceName) }}
   labels:
-    hops.ops.com.ai/network: {{ $networkName }}
+    hops.ops.com.ai/network: {{ $state.network.name }}
 spec:
-  managementPolicies: {{ $managementPolicies | toJson }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
   forProvider:
-    region: {{ $awsRegion }}
+    region: {{ $state.network.region }}
     routeTableIdRef:
       name: {{ $rt.name }}
     destinationCidrBlock: 0.0.0.0/0
     natGatewayIdRef:
       name: {{ $natConfig.name }}
   providerConfigRef:
-    name: {{ $providerConfigName }}
-    kind: {{ $providerConfigKind }}
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
 {{- end }}
 {{- end }}
 {{- end }}
