@@ -11,7 +11,7 @@
 # ==============================================================================
 # IPv4 Subnet Allocations
 # ==============================================================================
-{{ if $observed.ipam.ipv4.subnetPoolReady }}
+{{ if $observed.ipam.ipv4.subnetPoolFullyReady }}
   {{ range $az := $state.ipam.ipv4.azs }}
     {{ if $state.ipam.ipv4.private.enabled }}
 ---
@@ -65,7 +65,7 @@ spec:
 # ==============================================================================
 # IPv6 ULA Subnet Allocations
 # ==============================================================================
-{{ if and $state.ipam.ipv6Ula.enabled $observed.ipam.ipv6Ula.subnetPoolReady }}
+{{ if and $state.ipam.ipv6Ula.enabled $observed.ipam.ipv6Ula.subnetPoolFullyReady }}
   {{ range $az := $state.ipam.ipv6Ula.azs }}
     {{ if $state.ipam.ipv6Ula.private.enabled }}
 ---

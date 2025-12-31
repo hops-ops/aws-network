@@ -11,7 +11,7 @@
 {{ $renderVpc := true }}
 {{ $renderIpamPools := $ipamMode }}
 {{ $renderIpamPoolCidrs := and $ipamMode $observed.vpc.ready }}
-{{ $renderIpamAllocations := and $ipamMode $observed.ipam.ipv4.subnetPoolReady }}
+{{ $renderIpamAllocations := and $ipamMode $observed.ipam.ipv4.subnetPoolFullyReady }}
 {{ $renderSubnets := or $manualMode (gt (len $observed.ipam.ipv4.allocations) 0) }}
 {{ $renderInternetGateway := $hasPublicSubnets }}
 {{ $renderEgressOnlyIgw := and $hasIpv6 $hasPrivateSubnets }}

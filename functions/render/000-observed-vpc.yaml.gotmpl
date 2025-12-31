@@ -41,6 +41,10 @@
 {{ $vpcCidrBlock := $vpcAtProvider.cidrBlock | default "" }}
 {{ $vpcReady := get $readiness "vpc" | default false }}
 
+# Extract IPAM Pool IDs from VPC status - these are the pools the VPC used for allocation
+{{ $vpcIpv4IpamPoolId := $vpcAtProvider.ipv4IpamPoolId | default "" }}
+{{ $vpcIpv6IpamPoolId := $vpcAtProvider.ipv6IpamPoolId | default "" }}
+
 # Extract IPv6 CIDR - the provider only exposes a single ipv6CidrBlock field
 # Whether it's Amazon-provided or IPAM-allocated is determined by spec config, not observed state
 {{ $vpcIpv6Cidr := $vpcAtProvider.ipv6CidrBlock | default "" }}
@@ -52,6 +56,8 @@
 {{ $observed = merge $observed (dict "vpc" (dict
   "id" $vpcId
   "cidr" $vpcCidrBlock
+  "ipv4IpamPoolId" $vpcIpv4IpamPoolId
+  "ipv6IpamPoolId" $vpcIpv6IpamPoolId
   "ipv6Cidr" $vpcIpv6Cidr
   "ipv6AssociationId" $vpcIpv6AssociationId
   "ready" $vpcReady
