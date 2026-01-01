@@ -34,7 +34,11 @@ jobs:
           { "example": "examples/networks/standard.yaml" },
           { "example": "examples/networks/dual-stack-ula.yaml" },
           { "example": "examples/networks/dual-stack-amazon.yaml" },
-          { "example": "examples/networks/high-availability.yaml" }
+          { "example": "examples/networks/high-availability.yaml" },
+          { "example": "examples/networks/with-ipam.yaml", "observed_resources": "examples/test/mocks/observed-resources/with-ipam/steps/1" },
+          { "example": "examples/networks/with-ipam.yaml", "observed_resources": "examples/test/mocks/observed-resources/with-ipam/steps/2" },
+          { "example": "examples/networks/with-ipam.yaml", "observed_resources": "examples/test/mocks/observed-resources/with-ipam/steps/3" },
+          { "example": "examples/networks/with-ipam.yaml", "observed_resources": "examples/test/mocks/observed-resources/with-ipam/steps/4" }
         ]
       api_path: apis/networks
       error_on_missing_schemas: true
@@ -50,6 +54,7 @@ jobs:
     with:
       aws: true
       timeout-minutes: 30
+      cleanup-timeout-minutes: 30
 
   publish:
     needs:

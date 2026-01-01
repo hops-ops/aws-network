@@ -3,6 +3,7 @@ import datetime
 import file
 import math
 import models.io.upbound.dev.meta.v1alpha1 as metav1alpha1
+import models.ai.com.ops.hops.aws.v1alpha1 as hops
 
 _now = str(int(math.floor(datetime.ticks())))
 
@@ -13,15 +14,12 @@ _base64_creds = base64.encode(_creds)
 # Persistent infrastructure - update these if re-creating the test environment
 # =============================================================================
 #
-# IPAM Pools and Scopes - persistent infrastructure from aws-ipam e2e test
-# To get scope IDs, run:
-#   aws ec2 describe-ipam-scopes --query 'IpamScopes[*].[IpamScopeId,IpamScopeType]' --output table
+# IPAM Pools - persistent infrastructure from aws-ipam e2e test
+# To get pool IDs, run:
+#   aws ec2 describe-ipam-pools --query 'IpamPools[*].[IpamPoolId,AddressFamily,Description]' --output table
 #
-# Per-network child pools require scopeId when subnetPool.enabled is true
-_ipam_private_scope_id = "ipam-scope-0d6a6ca6fedc8e4e3"  # Private scope for IPv4 and IPv6 ULA
-
-_ipv4_private_pool_id = "ipam-pool-0a82c73b97dc0dabb"
-_ipv6_private_pool_id = "ipam-pool-0decd6c5216660c74"
+_ipv4_private_pool_id = "ipam-pool-0607416fa3707147a"
+_ipv6_private_pool_id = "ipam-pool-0ca730678e463dbfc"
 
 # =============================================================================
 # Dynamic test resources - timestamped to allow concurrent test runs
@@ -35,54 +33,49 @@ _items = [
             crossplane.autoUpgrade.channel: "Rapid"
             defaultConditions: ["Ready"]
             manifests: [
-                # Network XR - uses untyped dict to avoid KCL schema issues with pass-through fields
-                {
-                    apiVersion: "aws.hops.ops.com.ai/v1alpha1"
-                    kind: "Network"
+                # Network XR - using typed model
+                hops.Network{
                     metadata: {
                         name: _test_network_name
                         namespace: "default"
                     }
                     spec: {
-                        clusterName: "default"
-                        aws: {
-                            config: {
-                                region: "us-east-2"
-                                tags: {
-                                    "e2etest": "true"
-                                    "test-run": _now
-                                }
-                            }
+                        providerConfigRef: {
+                            name: "default"
                         }
-                        cidr: {
+                        region: "us-east-2"
+                        tags: {
+                            "e2etest": "true"
+                            "test-run": _now
+                        }
+                        # Use IPAM to auto-allocate VPC CIDRs
+                        ipam: {
                             ipv4: {
-                                ipam: {
-                                    poolId: _ipv4_private_pool_id
-                                    scopeId: _ipam_private_scope_id
-                                    # Per-network child pool is created automatically
-                                    subnetPool: {
-                                        enabled: True
-                                        netmaskLength: 24
-                                    }
-                                }
-                            }
-                            ipv6: {
                                 enabled: True
-                                ipam: {
-                                    poolId: _ipv6_private_pool_id
-                                    scopeId: _ipam_private_scope_id
-                                    # Per-network child pool is created automatically
-                                    subnetPool: {
-                                        enabled: True
-                                        netmaskLength: 64
-                                    }
-                                }
+                                poolId: _ipv4_private_pool_id
+                                netmaskLength: 16
                             }
-                            mode: "dual-stack"
+                            ipv6Ula: {
+                                enabled: True
+                                poolId: _ipv6_private_pool_id
+                                netmaskLength: 56  # AWS requires /56 for VPC IPv6
+                            }
                         }
-                        subnets: {
+                        # Subnet layout - CIDRs calculated from VPC CIDR
+                        subnetLayout: {
                             availabilityZones: ["a", "b"]
-                            types: ["private", "public"]
+                            public: {
+                                enabled: True
+                                netmaskLength: 24
+                            }
+                            private: {
+                                enabled: True
+                                netmaskLength: 20
+                            }
+                        }
+                        # No NAT gateway (costs money) - use IPv6 egress-only IGW instead
+                        nat: {
+                            enabled: False
                         }
                     }
                 }

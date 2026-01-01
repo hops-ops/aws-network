@@ -17,7 +17,7 @@ spec:
         type: object
         description: |
           Network creates AWS VPCs with subnets, routing, and optional enterprise features.
-          Receives explicit CIDRs from NetworkAllocation - no IPAM logic.
+          Supports manual CIDRs or automatic IPAM-based allocation.
         required:
         - spec
         properties:
@@ -26,8 +26,6 @@ spec:
             description: Desired state for the Network.
             required:
             - region
-            - vpc
-            - subnets
             properties:
               managementPolicies:
                 type: array
@@ -57,13 +55,89 @@ spec:
                     description: Kind of the provider config reference.
                     default: ProviderConfig
 
+              # IPAM - allocate VPC CIDR from IPAM pool, subnets calculated via cidrmath
+              ipam:
+                type: object
+                description: |
+                  Enable automatic VPC CIDR allocation from an IPAM pool.
+                  Subnet CIDRs are calculated from the VPC CIDR using cidrmath.
+                properties:
+                  ipv4:
+                    type: object
+                    description: IPv4 VPC allocation from IPAM.
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: Enable IPv4 CIDR allocation from IPAM.
+                        default: false
+                      poolId:
+                        type: string
+                        description: IPAM pool ID to allocate VPC CIDR from.
+                      netmaskLength:
+                        type: integer
+                        description: Netmask length for VPC CIDR (e.g., 16 for /16).
+                        default: 16
+                  ipv6Ula:
+                    type: object
+                    description: IPv6 ULA VPC allocation from IPAM.
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: Enable IPv6 ULA CIDR allocation from IPAM.
+                        default: false
+                      poolId:
+                        type: string
+                        description: IPAM pool ID to allocate VPC IPv6 CIDR from.
+                      netmaskLength:
+                        type: integer
+                        description: Netmask length for VPC IPv6 CIDR. AWS requires /56.
+                        default: 56
+
+              # Subnet layout - used with both IPAM and manual VPC CIDR
+              subnetLayout:
+                type: object
+                description: |
+                  Subnet layout configuration. When using IPAM, subnets are
+                  automatically calculated from the VPC CIDR using cidrmath.
+                properties:
+                  availabilityZones:
+                    type: array
+                    description: AZ suffixes for subnet creation (e.g., ["a", "b", "c"]).
+                    items:
+                      type: string
+                    default:
+                    - a
+                    - b
+                    - c
+                  public:
+                    type: object
+                    description: Public subnet settings.
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: Create public subnets.
+                        default: true
+                      netmaskLength:
+                        type: integer
+                        description: Netmask length for public subnets (e.g., 24 for /24).
+                        default: 24
+                  private:
+                    type: object
+                    description: Private subnet settings.
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: Create private subnets.
+                        default: true
+                      netmaskLength:
+                        type: integer
+                        description: Netmask length for private subnets (e.g., 20 for /20).
+                        default: 20
+
               # AWS Configuration (top-level since this is an AWS XRD)
               region:
                 type: string
                 description: AWS region for all managed resources.
-              accountId:
-                type: string
-                description: AWS account ID for tagging and documentation.
               tags:
                 type: object
                 description: Extra AWS tags merged with defaults.
@@ -72,15 +146,14 @@ spec:
               # VPC Configuration
               vpc:
                 type: object
-                description: VPC configuration with explicit CIDRs.
-                required:
-                - cidr
+                description: |
+                  VPC configuration. CIDR can be explicit or from networkAllocations.
                 properties:
                   cidr:
                     type: string
                     description: |
                       IPv4 CIDR block for the VPC (e.g., "10.1.0.0/16").
-                      Provided by IPv4NetworkAllocation status.
+                      Optional when using networkAllocations.ipv4.
                   ipv6:
                     type: object
                     description: Optional IPv6 configuration for dual-stack.
@@ -96,8 +169,8 @@ spec:
                           cidr:
                             type: string
                             description: |
-                              ULA IPv6 CIDR block (e.g., "fd00:1234::/48").
-                              Provided by IPv6ULANetworkAllocation status.
+                              ULA IPv6 CIDR block (e.g., "fd00:1234::/56").
+                              Required for manual ULA configuration.
                           ipamPoolId:
                             type: string
                             description: |
@@ -122,13 +195,13 @@ spec:
               subnets:
                 type: array
                 description: |
-                  Subnet definitions with explicit CIDRs.
-                  Each subnet specifies its CIDR, availability zone, and type.
+                  Subnet definitions. Optional when using networkAllocations.
+                  When using networkAllocations, subnets are auto-generated based on
+                  the allocation config (AZs, public/private settings).
                 items:
                   type: object
                   required:
                   - name
-                  - cidr
                   - availabilityZone
                   properties:
                     name:
@@ -136,7 +209,9 @@ spec:
                       description: Subnet name (e.g., "public-a", "private-b").
                     cidr:
                       type: string
-                      description: IPv4 CIDR block for the subnet.
+                      description: |
+                        IPv4 CIDR block for the subnet.
+                        Optional when using networkAllocations.ipv4.
                     availabilityZone:
                       type: string
                       description: Availability zone suffix (a, b, c) or full AZ name.
@@ -152,7 +227,7 @@ spec:
                           type: string
                           description: |
                             ULA IPv6 CIDR block for this subnet (/64).
-                            Provided by IPv6ULANetworkAllocation status.
+                            Required for manual dual-stack configuration.
                         amazonProvidedCidr:
                           type: string
                           description: |
@@ -237,6 +312,24 @@ spec:
             properties:
               ready:
                 type: boolean
+              ipam:
+                type: object
+                description: IPAM allocation status (when using IPAM for VPC CIDR).
+                properties:
+                  ipv4:
+                    type: object
+                    description: IPv4 IPAM allocation status.
+                    properties:
+                      cidr:
+                        type: string
+                        description: Allocated VPC IPv4 CIDR from IPAM.
+                  ipv6Ula:
+                    type: object
+                    description: IPv6 ULA IPAM allocation status.
+                    properties:
+                      cidr:
+                        type: string
+                        description: Allocated VPC IPv6 ULA CIDR from IPAM.
               network:
                 type: object
                 properties:

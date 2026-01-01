@@ -1,0 +1,52 @@
+# code: language=yaml
+#
+# VPC Resource (Step 1)
+# Creates VPC with IPv4 CIDR (explicit or from IPAM) and optional IPv6
+# Depends on: $state
+#
+
+{{ if $state.render.vpc }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPC
+metadata:
+  name: {{ $state.network.name }}
+  annotations:
+    {{ setResourceNameAnnotation "vpc" }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    enableDnsHostnames: {{ $state.vpc.enableDnsHostnames }}
+    enableDnsSupport: {{ $state.vpc.enableDnsSupport }}
+    {{- if $state.ipam.ipv4.enabled }}
+    # Allocate IPv4 CIDR from IPAM pool
+    ipv4IpamPoolId: {{ $state.ipam.ipv4.poolId }}
+    ipv4NetmaskLength: {{ $state.ipam.ipv4.vpcNetmask }}
+    {{- else }}
+    # Use explicit CIDR
+    cidrBlock: {{ $state.vpc.cidr }}
+    {{- end }}
+    {{- if $state.ipv6.amazon.enabled }}
+    assignGeneratedIpv6CidrBlock: true
+    {{- end }}
+    {{- if $state.ipam.ipv6Ula.enabled }}
+    # Allocate IPv6 ULA CIDR from IPAM pool
+    ipv6IpamPoolId: {{ $state.ipam.ipv6Ula.poolId }}
+    ipv6NetmaskLength: {{ $state.ipam.ipv6Ula.vpcNetmask }}
+    {{- else if and $state.ipv6.ula.enabled $state.ipv6.ula.ipamPoolId }}
+    # Use explicit ULA IPAM pool reference
+    ipv6IpamPoolId: {{ $state.ipv6.ula.ipamPoolId }}
+    {{- if $state.ipv6.ula.cidr }}
+    ipv6CidrBlock: {{ $state.ipv6.ula.cidr }}
+    {{- end }}
+    {{- end }}
+    tags:
+      {{ $state.network.tags | toYaml | nindent 6 }}
+      Name: {{ $state.network.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+{{ end }}

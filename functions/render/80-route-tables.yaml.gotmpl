@@ -1,0 +1,163 @@
+# code: language=yaml
+#
+# Route Tables (Step 8)
+# Creates public and private route tables with subnet associations
+# Depends on: $state, $observed
+#
+
+{{ if $state.render.routeTables }}
+
+# ==============================================================================
+# Public Route Table (shared across all public subnets)
+# ==============================================================================
+{{- if $state.subnets.hasPublic }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: RouteTable
+metadata:
+  name: {{ $state.routing.publicRouteTableName }}
+  annotations:
+    {{ setResourceNameAnnotation "rt-public" }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+    hops.ops.com.ai/tier: public
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    vpcIdRef:
+      name: {{ $state.network.name }}
+    tags:
+      {{ $state.network.tags | toYaml | nindent 6 }}
+      Name: {{ $state.routing.publicRouteTableName }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+
+# Usage: VPC protects public route table
+{{- if and $observed.vpc.ready $observed.rt.public.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-vpc-protects-rt-public
+  annotations:
+    {{ setResourceNameAnnotation "usage-vpc-rt-public" }}
+spec:
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPC
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: RouteTable
+    resourceRef:
+      name: {{ $state.routing.publicRouteTableName }}
+{{- end }}
+
+# Public subnet associations
+{{- range $subnet := $state.subnets.public }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: RouteTableAssociation
+metadata:
+  name: {{ $subnet.name }}-rta
+  annotations:
+    {{ setResourceNameAnnotation (printf "rta-%s" $subnet.resourceName) }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    routeTableIdRef:
+      name: {{ $state.routing.publicRouteTableName }}
+    subnetIdRef:
+      name: {{ $subnet.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+{{- end }}
+{{- end }}
+
+# ==============================================================================
+# Private Route Tables (one per AZ for NAT routing)
+# ==============================================================================
+{{- range $rt := $state.routing.privateRouteTables }}
+{{ $rtObs := get $observed.rt.private $rt.resourceName | default (dict) }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: RouteTable
+metadata:
+  name: {{ $rt.name }}
+  annotations:
+    {{ setResourceNameAnnotation $rt.resourceName }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+    hops.ops.com.ai/tier: private
+    hops.ops.com.ai/az: {{ $rt.azSuffix }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    vpcIdRef:
+      name: {{ $state.network.name }}
+    tags:
+      {{ $state.network.tags | toYaml | nindent 6 }}
+      Name: {{ $rt.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+
+# Usage: VPC protects private route table
+{{- if and $observed.vpc.ready $rtObs.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-vpc-protects-{{ $rt.resourceName }}
+  annotations:
+    {{ setResourceNameAnnotation (printf "usage-vpc-%s" $rt.resourceName) }}
+spec:
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPC
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: RouteTable
+    resourceRef:
+      name: {{ $rt.name }}
+{{- end }}
+{{- end }}
+
+# Private subnet associations (associate each private subnet with its AZ's route table)
+{{- range $subnet := $state.subnets.private }}
+{{- $rt := get $state.routing.privateRtByAz $subnet.azSuffix }}
+{{- if $rt }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: RouteTableAssociation
+metadata:
+  name: {{ $subnet.name }}-rta
+  annotations:
+    {{ setResourceNameAnnotation (printf "rta-%s" $subnet.resourceName) }}
+  labels:
+    hops.ops.com.ai/network: {{ $state.network.name }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    routeTableIdRef:
+      name: {{ $rt.name }}
+    subnetIdRef:
+      name: {{ $subnet.name }}
+  providerConfigRef:
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
+{{- end }}
+{{- end }}
+
+{{ end }}

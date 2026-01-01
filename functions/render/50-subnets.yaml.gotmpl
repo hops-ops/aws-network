@@ -1,7 +1,17 @@
 # code: language=yaml
+#
+# Subnets (Step 5)
+# Creates public and private subnets with Usage protection
+# Depends on: $state, $observed
+#
 
+{{ if $state.render.subnets }}
+
+# ==============================================================================
 # Public Subnets
-{{- range $subnet := $publicSubnets }}
+# ==============================================================================
+{{- range $subnet := $state.subnets.public }}
+{{- if ne $subnet.cidr "" }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Subnet
@@ -12,36 +22,32 @@ metadata:
   labels:
     {{ $subnet.labels | toYaml | nindent 4 }}
 spec:
-  managementPolicies: {{ $managementPolicies | toJson }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
   forProvider:
-    region: {{ $awsRegion }}
+    region: {{ $state.network.region }}
     availabilityZone: {{ $subnet.az }}
     vpcIdRef:
-      name: {{ $networkName }}
+      name: {{ $state.network.name }}
     mapPublicIpOnLaunch: {{ $subnet.mapPublicIpOnLaunch }}
     cidrBlock: {{ $subnet.cidr }}
-    {{- if $hasIpv6 }}
+    {{- if $subnet.assignIpv6AddressOnCreation }}
     assignIpv6AddressOnCreation: true
-    {{- if $subnet.ipv6UlaCidr }}
-    ipv6CidrBlock: {{ $subnet.ipv6UlaCidr }}
-    {{- else if $subnet.ipv6AmazonCidr }}
-    ipv6CidrBlock: {{ $subnet.ipv6AmazonCidr }}
-    {{- end }}
+    ipv6CidrBlock: {{ $subnet.ipv6CidrBlock }}
     {{- end }}
     tags:
       {{ $subnet.tags | toYaml | nindent 6 }}
   providerConfigRef:
-    name: {{ $providerConfigName }}
-    kind: {{ $providerConfigKind }}
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
 
 # Usage: VPC protects public subnet
-{{ $subnetReady := get $resourceReadiness $subnet.resourceName | default false }}
-{{- if and $vpcReady $subnetReady }}
+{{ $subnetObs := get $observed.subnets $subnet.resourceName | default (dict) }}
+{{- if and $observed.vpc.ready $subnetObs.ready }}
 ---
 apiVersion: protection.crossplane.io/v1beta1
 kind: Usage
 metadata:
-  name: {{ $networkName }}-vpc-protects-{{ $subnet.resourceName }}
+  name: {{ $state.network.name }}-vpc-protects-{{ $subnet.resourceName }}
   annotations:
     {{ setResourceNameAnnotation (printf "usage-vpc-%s" $subnet.resourceName) }}
 spec:
@@ -49,7 +55,7 @@ spec:
     apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: VPC
     resourceRef:
-      name: {{ $networkName }}
+      name: {{ $state.network.name }}
   by:
     apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: Subnet
@@ -57,9 +63,13 @@ spec:
       name: {{ $subnet.name }}
 {{- end }}
 {{- end }}
+{{- end }}
 
+# ==============================================================================
 # Private Subnets
-{{- range $subnet := $privateSubnets }}
+# ==============================================================================
+{{- range $subnet := $state.subnets.private }}
+{{- if ne $subnet.cidr "" }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Subnet
@@ -70,36 +80,32 @@ metadata:
   labels:
     {{ $subnet.labels | toYaml | nindent 4 }}
 spec:
-  managementPolicies: {{ $managementPolicies | toJson }}
+  managementPolicies: {{ $state.managementPolicies | toJson }}
   forProvider:
-    region: {{ $awsRegion }}
+    region: {{ $state.network.region }}
     availabilityZone: {{ $subnet.az }}
     vpcIdRef:
-      name: {{ $networkName }}
+      name: {{ $state.network.name }}
     mapPublicIpOnLaunch: {{ $subnet.mapPublicIpOnLaunch }}
     cidrBlock: {{ $subnet.cidr }}
-    {{- if $hasIpv6 }}
+    {{- if $subnet.assignIpv6AddressOnCreation }}
     assignIpv6AddressOnCreation: true
-    {{- if $subnet.ipv6UlaCidr }}
-    ipv6CidrBlock: {{ $subnet.ipv6UlaCidr }}
-    {{- else if $subnet.ipv6AmazonCidr }}
-    ipv6CidrBlock: {{ $subnet.ipv6AmazonCidr }}
-    {{- end }}
+    ipv6CidrBlock: {{ $subnet.ipv6CidrBlock }}
     {{- end }}
     tags:
       {{ $subnet.tags | toYaml | nindent 6 }}
   providerConfigRef:
-    name: {{ $providerConfigName }}
-    kind: {{ $providerConfigKind }}
+    name: {{ $state.providerConfig.name }}
+    kind: {{ $state.providerConfig.kind }}
 
 # Usage: VPC protects private subnet
-{{ $subnetReady := get $resourceReadiness $subnet.resourceName | default false }}
-{{- if and $vpcReady $subnetReady }}
+{{ $subnetObs := get $observed.subnets $subnet.resourceName | default (dict) }}
+{{- if and $observed.vpc.ready $subnetObs.ready }}
 ---
 apiVersion: protection.crossplane.io/v1beta1
 kind: Usage
 metadata:
-  name: {{ $networkName }}-vpc-protects-{{ $subnet.resourceName }}
+  name: {{ $state.network.name }}-vpc-protects-{{ $subnet.resourceName }}
   annotations:
     {{ setResourceNameAnnotation (printf "usage-vpc-%s" $subnet.resourceName) }}
 spec:
@@ -107,7 +113,7 @@ spec:
     apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: VPC
     resourceRef:
-      name: {{ $networkName }}
+      name: {{ $state.network.name }}
   by:
     apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: Subnet
@@ -115,3 +121,6 @@ spec:
       name: {{ $subnet.name }}
 {{- end }}
 {{- end }}
+{{- end }}
+
+{{ end }}
