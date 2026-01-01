@@ -1,7 +1,7 @@
 apiVersion: meta.dev.upbound.io/v2alpha1
 kind: Project
 metadata:
-  name: configuration-network
+  name: configuration-aws-network
 spec:
   dependsOn:
   - apiVersion: pkg.crossplane.io/v1
@@ -18,7 +18,7 @@ spec:
   license: Apache-2.0
   maintainer: Hops Platform Team <platform@hops.ops.com.ai>
   readme: |
-    # configuration-network
+    # configuration-aws-network
 
     AWS VPC networking configuration with support for:
     - IPv4, IPv6 (Amazon-provided or ULA), and dual-stack
@@ -26,5 +26,5 @@ spec:
     - NAT gateways (single-AZ or highly-available)
     - Internet and Egress-Only Internet Gateways
     - VPC Flow Logs
-  repository: ghcr.io/hops-ops/configuration-network
-  source: github.com/hops-ops/configuration-network
+  repository: ghcr.io/hops-ops/configuration-aws-network
+  source: github.com/hops-ops/configuration-aws-network

@@ -10,14 +10,14 @@ spec:
 
 ---
 
-# skipDependencyResolution false would name this hops-ops-configuration-networkrender
+# skipDependencyResolution false would name this hops-ops-configuration-aws-networkrender
 # so we need to match that format to avoid issues with the package name
 apiVersion: pkg.crossplane.io/v1
 kind: Function
 metadata:
-  name: hops-ops-configuration-networkrender
+  name: hops-ops-configuration-aws-networkrender
 spec:
-  package: ghcr.io/hops-ops/configuration-network_render:{{ .Values.version }}
+  package: ghcr.io/hops-ops/configuration-aws-network_render:{{ .Values.version }}
   packagePullSecrets:
     - name: ghcr
   skipDependencyResolution: {{ .Values.skipDependencyResolution }}
