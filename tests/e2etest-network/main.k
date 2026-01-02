@@ -49,30 +49,46 @@ _ipv6_private_pool_id = "ipam-pool-0ca730678e463dbfc"
 _orphan = ["Create", "Observe", "Update", "LateInitialize"]
 
 # External names for import (leave empty for create, populate for import)
-_vpc_external_name = ""
-_igw_external_name = ""
-_eigw_external_name = ""
-_subnet_external_names = {}
-_route_table_external_names = {}
-_rta_external_names = {}
+# VPC: vpc-08b36c3876f7483c6
+_vpc_external_name = "vpc-08b36c3876f7483c6"
 
-#   _subnet_external_names = {
-#       "public-a": "subnet-xxx"
-#       "public-b": "subnet-yyy"
-#       "private-a": "subnet-zzz"
-#       "private-b": "subnet-www"
-#   }
-#   _route_table_external_names = {
-#       "public": "rtb-xxx"
-#       "private-a": "rtb-yyy"
-#       "private-b": "rtb-zzz"
-#   }
-#   _rta_external_names = {
-#       "public-a": "rtbassoc-xxx"
-#       "public-b": "rtbassoc-yyy"
-#       "private-a": "rtbassoc-zzz"
-#       "private-b": "rtbassoc-www"
-#   }
+# Internet Gateway: igw-03a2b57e7564cda9f
+_igw_external_name = "igw-03a2b57e7564cda9f"
+
+# Egress-Only Internet Gateway: eigw-0509f3b2bd1be9138
+_eigw_external_name = "eigw-0509f3b2bd1be9138"
+
+# Subnets
+_subnet_external_names = {
+    "private-b": "subnet-0cbb443a464822732"
+    "public-c": "subnet-057c84f314a39d68d"
+    "public-a": "subnet-02ff76c2c4176f37f"
+    "private-c": "subnet-00973c5fd791f6037"
+    "private-a": "subnet-0020e9ba5ee42afee"
+    "public-b": "subnet-07b28779d3b08cb9f"
+}
+
+# Route Tables
+_route_table_external_names = {
+    "private-a": "rtb-06f5dfc79be8adde5"
+    "public": "rtb-0ab0e4783e8f1f95c"
+    "private-c": "rtb-099239ef54186f902"
+    "private-b": "rtb-091712a660e70b8c8"
+}
+
+# Route Table Associations
+_rta_external_names = {
+    "private-a": "rtbassoc-06f73a87e5e6aa1e3"
+    "public-b": "rtbassoc-04fda70b1c1b457a0"
+    "public-c": "rtbassoc-0ebd2d46928315951"
+    "public-a": "rtbassoc-0b77df963c53e1207"
+    "private-c": "rtbassoc-001ec41949a17ebdc"
+    "private-b": "rtbassoc-09ec129f2661a33c7"
+}
+
+# NAT Gateways
+_nat_external_names = {}
+_eip_external_names = {}
 
 # =============================================================================
 # Test Network
