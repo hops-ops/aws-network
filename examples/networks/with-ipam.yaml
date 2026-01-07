@@ -28,7 +28,7 @@ spec:
   # Subnet layout - CIDRs calculated from VPC CIDR via cidrmath
   # This is meant to be temporary until Terraform/Crossplane support for IPAM
   # subnet allocations is available
-  # https://github.com/hops-ops/configuration-aws-network/pull/7
+  # https://github.com/hops-ops/aws-network/pull/7
   subnetLayout:
     availabilityZones:
     - a

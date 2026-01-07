@@ -13,8 +13,7 @@ metadata:
   name: {{ $state.network.name }}-tgw-attachment
   annotations:
     {{ setResourceNameAnnotation "tgw-attachment" }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.managementPolicies | toJson }}
   forProvider:

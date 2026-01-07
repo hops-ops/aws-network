@@ -16,8 +16,7 @@ metadata:
     {{- if $state.network.vpc.externalName }}
     crossplane.io/external-name: {{ $state.network.vpc.externalName | quote }}
     {{- end }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.vpc.managementPolicies | toJson }}
   forProvider:

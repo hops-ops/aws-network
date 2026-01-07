@@ -22,9 +22,7 @@ metadata:
     {{- if $publicRtExternalName }}
     crossplane.io/external-name: {{ $publicRtExternalName | quote }}
     {{- end }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
-    hops.ops.com.ai/tier: public
+  labels: {{ merge $state.network.labels (dict "hops.ops.com.ai/tier" "public") | toJson }}
 spec:
   managementPolicies: {{ $state.network.routeTables.managementPolicies | toJson }}
   forProvider:
@@ -74,8 +72,7 @@ metadata:
     {{- if $rtaExternalName }}
     crossplane.io/external-name: {{ $rtaExternalName | quote }}
     {{- end }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.routeTables.managementPolicies | toJson }}
   forProvider:
@@ -107,10 +104,7 @@ metadata:
     {{- if $privateRtExternalName }}
     crossplane.io/external-name: {{ $privateRtExternalName | quote }}
     {{- end }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
-    hops.ops.com.ai/tier: private
-    hops.ops.com.ai/az: {{ $rt.azSuffix }}
+  labels: {{ merge $state.network.labels (dict "hops.ops.com.ai/tier" "private" "hops.ops.com.ai/az" $rt.azSuffix) | toJson }}
 spec:
   managementPolicies: {{ $state.network.routeTables.managementPolicies | toJson }}
   forProvider:
@@ -163,8 +157,7 @@ metadata:
     {{- if $rtaExternalName }}
     crossplane.io/external-name: {{ $rtaExternalName | quote }}
     {{- end }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.routeTables.managementPolicies | toJson }}
   forProvider:

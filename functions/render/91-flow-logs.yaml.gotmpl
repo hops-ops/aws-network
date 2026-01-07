@@ -13,8 +13,7 @@ metadata:
   name: {{ $state.network.name }}-flow-log
   annotations:
     {{ setResourceNameAnnotation "flow-log" }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.managementPolicies | toJson }}
   forProvider:

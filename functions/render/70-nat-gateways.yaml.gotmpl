@@ -19,8 +19,7 @@ metadata:
     {{- if $eipExternalName }}
     crossplane.io/external-name: {{ $eipExternalName | quote }}
     {{- end }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.nat.managementPolicies | toJson }}
   forProvider:
@@ -42,8 +41,7 @@ metadata:
     {{- if $natExternalName }}
     crossplane.io/external-name: {{ $natExternalName | quote }}
     {{- end }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.nat.managementPolicies | toJson }}
   forProvider:
@@ -121,8 +119,7 @@ metadata:
   name: {{ $state.network.name }}-{{ $rt.resourceName }}-default-ipv4
   annotations:
     {{ setResourceNameAnnotation (printf "route-%s-default-ipv4" $rt.resourceName) }}
-  labels:
-    hops.ops.com.ai/network: {{ $state.network.name }}
+  labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.routeTables.managementPolicies | toJson }}
   forProvider:
