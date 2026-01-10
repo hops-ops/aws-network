@@ -47,6 +47,8 @@ jobs:
 
   test:
     uses: unbounded-tech/workflows-crossplane/.github/workflows/test.yaml@feat/debug-logs
+    with:
+      test-debug-logs: true
 
   e2e:
     uses: unbounded-tech/workflows-crossplane/.github/workflows/e2e.yaml@feat/debug-logs
@@ -57,6 +59,7 @@ jobs:
       aws-region: us-east-2
       timeout-minutes: 33
       cleanup-timeout-minutes: 33
+      test-debug-logs: true
 
   publish:
     needs:
