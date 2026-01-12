@@ -450,7 +450,10 @@ _items = [
                     apiVersion = "ec2.aws.m.upbound.io/v1beta1"
                     kind = "VPC"
                     metadata.name = "test-default-tags"
-                    spec.forProvider.tags.hops = "true"
+                    spec.forProvider.tags = {
+                        "hops.ops.com.ai/managed" = "true"
+                        "hops.ops.com.ai/network" = "test-default-tags"
+                    }
                 }
             ]
         }
@@ -483,7 +486,8 @@ _items = [
                     kind = "VPC"
                     metadata.name = "test-custom-tags"
                     spec.forProvider.tags = {
-                        hops = "true"
+                        "hops.ops.com.ai/managed" = "true"
+                        "hops.ops.com.ai/network" = "test-custom-tags"
                         environment = "test"
                         team = "platform"
                     }

@@ -23,16 +23,13 @@
   "kind" (($spec.providerConfigRef | default dict).kind | default "ProviderConfig")
 }}
 
-# Tags with defaults
-{{- $defaultTags := dict "hops" "true" (printf "hops.ops.com.ai/network") $name }}
-{{- $tags := merge (dict) $defaultTags ($spec.tags | default dict) }}
-
-# Default labels: managed=true + <kind>=<name>
-{{- $defaultLabels := dict
+# Default labels/tags: managed=true + <kind>=<name>
+{{- $defaults := dict
   "hops.ops.com.ai/managed" "true"
   (printf "hops.ops.com.ai/%s" (lower $xr.kind)) $name
 }}
-{{- $labels := merge $defaultLabels ($spec.labels | default dict) }}
+{{- $labels := merge $defaults ($spec.labels | default dict) }}
+{{- $tags := merge $defaults ($spec.tags | default dict) }}
 
 # VPC configuration
 {{- $vpcSpec := $spec.vpc | default dict }}
@@ -181,4 +178,3 @@
   "observed" (dict)
   "network" (dict)
 }}
-

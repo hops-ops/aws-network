@@ -50,41 +50,45 @@ _orphan = ["Create", "Observe", "Update", "LateInitialize"]
 
 # External names for import (leave empty for create, populate for import)
 # VPC: vpc-08b36c3876f7483c6
-_vpc_external_name = "vpc-08b36c3876f7483c6"
+_vpc_external_name = ""
 
 # Internet Gateway: igw-03a2b57e7564cda9f
-_igw_external_name = "igw-03a2b57e7564cda9f"
+_igw_external_name = ""
 
 # Egress-Only Internet Gateway: eigw-0509f3b2bd1be9138
-_eigw_external_name = "eigw-0509f3b2bd1be9138"
+_eigw_external_name = ""
 
-# Subnets
-_subnet_external_names = {
-    "private-b": "subnet-0cbb443a464822732"
-    "public-c": "subnet-057c84f314a39d68d"
-    "public-a": "subnet-02ff76c2c4176f37f"
-    "private-c": "subnet-00973c5fd791f6037"
-    "private-a": "subnet-0020e9ba5ee42afee"
-    "public-b": "subnet-07b28779d3b08cb9f"
-}
 
-# Route Tables
-_route_table_external_names = {
-    "private-a": "rtb-06f5dfc79be8adde5"
-    "public": "rtb-0ab0e4783e8f1f95c"
-    "private-c": "rtb-099239ef54186f902"
-    "private-b": "rtb-091712a660e70b8c8"
-}
+_subnet_external_names = {}
+_route_table_external_names = {}
+_rta_external_names = {}
+# # Subnets
+# _subnet_external_names = {
+#     "private-b": ""
+#     "public-c": ""
+#     "public-a": ""
+#     "private-c": ""
+#     "private-a": ""
+#     "public-b": ""
+# }
 
-# Route Table Associations
-_rta_external_names = {
-    "private-a": "rtbassoc-06f73a87e5e6aa1e3"
-    "public-b": "rtbassoc-04fda70b1c1b457a0"
-    "public-c": "rtbassoc-0ebd2d46928315951"
-    "public-a": "rtbassoc-0b77df963c53e1207"
-    "private-c": "rtbassoc-001ec41949a17ebdc"
-    "private-b": "rtbassoc-09ec129f2661a33c7"
-}
+# # Route Tables
+# _route_table_external_names = {
+#     "private-a": ""
+#     "public": ""
+#     "private-c": ""
+#     "private-b": ""
+# }
+
+# # Route Table Associations
+# _rta_external_names = {
+#     "private-a": ""
+#     "public-b": ""
+#     "public-c": ""
+#     "public-a": ""
+#     "private-c": ""
+#     "private-b": ""
+# }
 
 # NAT Gateways
 _nat_external_names = {}
@@ -93,11 +97,11 @@ _eip_external_names = {}
 # =============================================================================
 # Test Network
 # =============================================================================
-_test_network_name = "e2etest-network"
+_test_network_name = "hops-test"
 
 _now = str(int(math.floor(datetime.ticks())))
 
-_ephemeral_test_network_name = _test_network_name + "-" + _now
+_ephemeral_test_network_name =  "e2etest-aws-network-ephemeral" + _now
 
 _items = [
     metav1alpha1.E2ETest{
@@ -117,8 +121,9 @@ _items = [
                         }
                         region: "us-east-2"
                         tags: {
-                            "e2etest": "true"
-                            "test-run": _now
+                            "hops.ops.com.ai/test-repo": "https://github.com/hops-ops/aws-network"
+                            "hops.ops.com.ai/test-run-time": _now
+                            "hops.ops.com.ai/persistent": "true"
                         }
                         # Use IPAM to auto-allocate VPC CIDRs
                         ipam: {
@@ -163,8 +168,9 @@ _items = [
                         }
                         region: "us-east-2"
                         tags: {
-                            "e2etest": "true"
-                            "hops.ops.com.ai/managed": "true"
+                            "hops.ops.com.ai/test-repo": "https://github.com/hops-ops/aws-network"
+                            "hops.ops.com.ai/test-run-time": _now
+                            "hops.ops.com.ai/ephemeral": "true"
                         }
                         vpc: {
                             if _vpc_external_name:
