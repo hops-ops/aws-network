@@ -172,18 +172,18 @@ _items = [
                             "hops.ops.com.ai/test-run-time": _now
                             "hops.ops.com.ai/persistent": "true"
                         }
-                        vpc: {
-                            if _vpc_external_name:
-                                externalName: _vpc_external_name
-                        }
-                        internetGateway: {
-                            if _igw_external_name:
-                                externalName: _igw_external_name
-                        }
-                        egressOnlyInternetGateway: {
-                            if _eigw_external_name:
-                                externalName: _eigw_external_name
-                        }
+                        if _vpc_external_name:
+                            vpc: {
+                                    externalName: _vpc_external_name
+                            }
+                        if _igw_external_name:
+                            internetGateway: {
+                                    externalName: _igw_external_name
+                            }
+                        if _eigw_external_name:
+                            egressOnlyInternetGateway: {
+                                    externalName: _eigw_external_name
+                            }
                         # Use IPAM to auto-allocate VPC CIDRs
                         ipam: {
                             ipv4: {
@@ -210,12 +210,13 @@ _items = [
                             if _subnet_external_names:
                                 externalNames: _subnet_external_names
                         }
-                        routeTables: {
-                            if _route_table_external_names:
-                                externalNames: _route_table_external_names
-                            if _rta_external_names:
-                                associationExternalNames: _rta_external_names
-                        }
+                        if _route_table_external_names or _rta_external_names:
+                            routeTables: {
+                                if _route_table_external_names:
+                                    externalNames: _route_table_external_names
+                                if _rta_external_names:
+                                    associationExternalNames: _rta_external_names
+                            }
                         # No NAT gateway (costs money)
                         nat: {
                             enabled: False
