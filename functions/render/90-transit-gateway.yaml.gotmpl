@@ -27,7 +27,6 @@ spec:
     {{- end }}
     tags:
       {{ $state.network.tags | toYaml | nindent 6 }}
-      Name: {{ $state.network.name }}-tgw-attachment
   providerConfigRef:
     name: {{ $state.network.providerConfig.name }}
     kind: {{ $state.network.providerConfig.kind }}

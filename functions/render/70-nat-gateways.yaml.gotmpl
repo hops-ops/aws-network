@@ -27,7 +27,6 @@ spec:
     domain: vpc
     tags:
       {{ $state.network.tags | toYaml | nindent 6 }}
-      Name: {{ $natConfig.eipName }}
   providerConfigRef:
     name: {{ $state.network.providerConfig.name }}
     kind: {{ $state.network.providerConfig.kind }}
@@ -53,7 +52,6 @@ spec:
       name: {{ $natConfig.publicSubnet }}
     tags:
       {{ $state.network.tags | toYaml | nindent 6 }}
-      Name: {{ $natConfig.name }}
   providerConfigRef:
     name: {{ $state.network.providerConfig.name }}
     kind: {{ $state.network.providerConfig.kind }}

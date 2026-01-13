@@ -31,7 +31,6 @@ spec:
       name: {{ $state.network.name }}
     tags:
       {{ $state.network.tags | toYaml | nindent 6 }}
-      Name: {{ $state.network.routeTables.publicRouteTableName }}
   providerConfigRef:
     name: {{ $state.network.providerConfig.name }}
     kind: {{ $state.network.providerConfig.kind }}
@@ -113,7 +112,6 @@ spec:
       name: {{ $state.network.name }}
     tags:
       {{ $state.network.tags | toYaml | nindent 6 }}
-      Name: {{ $rt.name }}
   providerConfigRef:
     name: {{ $state.network.providerConfig.name }}
     kind: {{ $state.network.providerConfig.kind }}
