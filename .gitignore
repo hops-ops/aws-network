@@ -4,3 +4,4 @@ _output/
 .tmp/
 tests/**/secrets
 tests/**/env/
+apis/**/configuration.yaml
