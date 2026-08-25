@@ -115,6 +115,59 @@ spec:
                         type: integer
                         description: Netmask length allocated to the VPC (typically /56).
                         default: 56
+                  resourcePlanning:
+                    type: object
+                    description: |
+                      Create VPC resource-planning pools in the IPAM administrator
+                      account and allocate layout subnets from them. The VPC must
+                      receive its address space from the corresponding regional pool.
+                    properties:
+                      providerConfigRef:
+                        type: object
+                        description: AWS ProviderConfig for the IPAM administrator account.
+                        properties:
+                          name:
+                            type: string
+                            description: Name of the IPAM administrator ProviderConfig.
+                            default: default
+                          kind:
+                            type: string
+                            description: Kind of the provider config reference.
+                            default: ProviderConfig
+                      managementPolicies:
+                        type: array
+                        description: Management operations for resource-planning pools.
+                        items:
+                          type: string
+                          enum:
+                          - "*"
+                          - Create
+                          - Observe
+                          - Update
+                          - Delete
+                          - LateInitialize
+                      ipv4:
+                        type: object
+                        description: IPv4 VPC resource-planning pool configuration.
+                        properties:
+                          enabled:
+                            type: boolean
+                            description: Create an IPv4 planning pool sourced from this VPC.
+                            default: false
+                          scopeId:
+                            type: string
+                            description: Private IPAM scope ID in the IPAM administrator account.
+                      ipv6:
+                        type: object
+                        description: IPv6 VPC resource-planning pool configuration.
+                        properties:
+                          enabled:
+                            type: boolean
+                            description: Create an IPv6 planning pool sourced from this VPC.
+                            default: false
+                          scopeId:
+                            type: string
+                            description: IPAM scope ID containing the regional IPv6 source pool.
 
               # Subnet layout - used with both IPAM and manual VPC CIDR
               subnetLayout:
@@ -532,6 +585,14 @@ spec:
                       cidr:
                         type: string
                         description: Allocated VPC IPv6 GUA CIDR from IPAM.
+                  resourcePlanning:
+                    type: object
+                    description: Observed VPC resource-planning pool IDs.
+                    properties:
+                      ipv4PoolId:
+                        type: string
+                      ipv6PoolId:
+                        type: string
               network:
                 type: object
                 properties:

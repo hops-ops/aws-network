@@ -1,0 +1,23 @@
+# code: language=yaml
+#
+# Observe VPC resource-planning pools managed by the IPAM administrator account.
+# Depends on: 001-state-observed-vpc.yaml.gotmpl
+#
+
+{{- $raw := $state.observed._raw }}
+{{- $readiness := $state.observed._readiness }}
+{{- $planning := dict }}
+
+{{- range $family := list "ipv4" "ipv6" }}
+  {{- $resourceName := printf "ipam-planning-%s" $family }}
+  {{- $entry := get $raw $resourceName | default dict }}
+  {{- $resource := $entry.resource | default dict }}
+  {{- $status := $resource.status | default dict }}
+  {{- $atProvider := $status.atProvider | default dict }}
+  {{- $planning = set $planning $family (dict
+    "ready" (get $readiness $resourceName | default false)
+    "id" ($atProvider.id | default "")
+  ) }}
+{{- end }}
+
+{{- $state = set $state "observed" (merge $state.observed (dict "ipamPlanning" $planning)) }}

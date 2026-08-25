@@ -60,6 +60,10 @@
 {{- $ipv4IpamSpec := $ipamSpec.ipv4 | default dict }}
 {{- $ipv6UlaIpamSpec := $ipamSpec.ipv6Ula | default dict }}
 {{- $ipv6GuaIpamSpec := $ipamSpec.ipv6Gua | default dict }}
+{{- $resourcePlanningSpec := $ipamSpec.resourcePlanning | default dict }}
+{{- $resourcePlanningIpv4Spec := $resourcePlanningSpec.ipv4 | default dict }}
+{{- $resourcePlanningIpv6Spec := $resourcePlanningSpec.ipv6 | default dict }}
+{{- $resourcePlanningProviderConfigRef := $resourcePlanningSpec.providerConfigRef | default dict }}
 {{- $ipam := dict
   "ipv4" (dict
     "enabled" ($ipv4IpamSpec.enabled | default false)
@@ -75,6 +79,21 @@
     "enabled" ($ipv6GuaIpamSpec.enabled | default false)
     "poolId" ($ipv6GuaIpamSpec.poolId | default "")
     "netmaskLength" ($ipv6GuaIpamSpec.netmaskLength | default 56)
+  )
+  "resourcePlanning" (dict
+    "providerConfigRef" (dict
+      "name" ($resourcePlanningProviderConfigRef.name | default "default")
+      "kind" ($resourcePlanningProviderConfigRef.kind | default "ProviderConfig")
+    )
+    "managementPolicies" ($resourcePlanningSpec.managementPolicies | default $managementPolicies)
+    "ipv4" (dict
+      "enabled" ($resourcePlanningIpv4Spec.enabled | default false)
+      "scopeId" ($resourcePlanningIpv4Spec.scopeId | default "")
+    )
+    "ipv6" (dict
+      "enabled" ($resourcePlanningIpv6Spec.enabled | default false)
+      "scopeId" ($resourcePlanningIpv6Spec.scopeId | default "")
+    )
   )
 }}
 

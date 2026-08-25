@@ -78,6 +78,50 @@ spec:
     resourceRef:
       name: {{ $subnet.name }}
 {{- end }}
+
+# Usages: Delete public subnet before automatic IPAM planning pools
+{{- if and $state.network.ipam.resourcePlanning.ipv4.enabled $state.observed.ipamPlanning.ipv4.ready $subnetObs.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-{{ $subnet.resourceName }}-before-ipv4-planning
+  annotations:
+    {{ setResourceNameAnnotation (printf "delete-%s-before-ipv4-planning" $subnet.resourceName) }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv4-planning
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: Subnet
+    resourceRef:
+      name: {{ $subnet.name }}
+{{- end }}
+{{- if and $state.network.ipam.resourcePlanning.ipv6.enabled $state.observed.ipamPlanning.ipv6.ready $subnetObs.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-{{ $subnet.resourceName }}-before-ipv6-planning
+  annotations:
+    {{ setResourceNameAnnotation (printf "delete-%s-before-ipv6-planning" $subnet.resourceName) }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv6-planning
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: Subnet
+    resourceRef:
+      name: {{ $subnet.name }}
+{{- end }}
 {{- end }}
 {{- end }}
 
@@ -146,6 +190,50 @@ spec:
     kind: VPC
     resourceRef:
       name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: Subnet
+    resourceRef:
+      name: {{ $subnet.name }}
+{{- end }}
+
+# Usages: Delete private subnet before automatic IPAM planning pools
+{{- if and $state.network.ipam.resourcePlanning.ipv4.enabled $state.observed.ipamPlanning.ipv4.ready $subnetObs.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-{{ $subnet.resourceName }}-before-ipv4-planning
+  annotations:
+    {{ setResourceNameAnnotation (printf "delete-%s-before-ipv4-planning" $subnet.resourceName) }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv4-planning
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: Subnet
+    resourceRef:
+      name: {{ $subnet.name }}
+{{- end }}
+{{- if and $state.network.ipam.resourcePlanning.ipv6.enabled $state.observed.ipamPlanning.ipv6.ready $subnetObs.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-{{ $subnet.resourceName }}-before-ipv6-planning
+  annotations:
+    {{ setResourceNameAnnotation (printf "delete-%s-before-ipv6-planning" $subnet.resourceName) }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv6-planning
   by:
     apiVersion: ec2.aws.m.upbound.io/v1beta1
     kind: Subnet

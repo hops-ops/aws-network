@@ -62,10 +62,17 @@ spec:
       enabled: true
       poolId: ipam-pool-0fedcba9876543210
       netmaskLength: 56
+    resourcePlanning:
+      # The IPAM administrator creates pools sourced from this workload VPC.
+      providerConfigRef:
+        name: network
+      ipv4:
+        enabled: true
+        scopeId: ipam-scope-private0123456789
+      ipv6:
+        enabled: true
+        scopeId: ipam-scope-public0123456789
   subnetLayout:
-    # VPC resource-planning pools, not the regional VPC allocation pools above
-    ipv4PoolId: ipam-pool-vpc-ipv4-0123456789abcdef0
-    ipv6PoolId: ipam-pool-vpc-ipv6-0123456789abcdef0
     ipv6NetmaskLength: 64
     availabilityZones: [a, b, c]
     public:
@@ -456,6 +463,12 @@ spec:
 | `ipv6Gua.enabled` | boolean | Enable IPv6 GUA allocation from a regional IPAM pool |
 | `ipv6Gua.poolId` | string | Regional Amazon-provided or BYOIP IPv6 IPAM pool ID |
 | `ipv6Gua.netmaskLength` | int | VPC IPv6 netmask (default: 56) |
+| `resourcePlanning.providerConfigRef` | object | ProviderConfig for the IPAM administrator account |
+| `resourcePlanning.managementPolicies` | []string | Management operations for planning pools |
+| `resourcePlanning.ipv4.enabled` | boolean | Create an IPv4 planning pool sourced from the VPC |
+| `resourcePlanning.ipv4.scopeId` | string | Private IPAM scope containing the IPv4 regional pool |
+| `resourcePlanning.ipv6.enabled` | boolean | Create an IPv6 planning pool sourced from the VPC |
+| `resourcePlanning.ipv6.scopeId` | string | IPAM scope containing the IPv6 regional pool |
 
 ### spec.subnetLayout
 
@@ -509,6 +522,9 @@ status:
       cidr: "fd00:dead:beef::/56"
     ipv6Gua:
       cidr: "2600:1f18:abc::/56"
+    resourcePlanning:
+      ipv4PoolId: ipam-pool-vpc-ipv4-abc123
+      ipv6PoolId: ipam-pool-vpc-ipv6-def456
   network:
     name: my-network
     region: us-east-1

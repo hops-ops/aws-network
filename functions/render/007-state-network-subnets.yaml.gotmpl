@@ -98,6 +98,23 @@
   {{- $vpcIpv6Cidr := $state.network.vpc.ipv6Cidr }}
   {{- $subnetIpv4IpamPoolId := $eff.subnetLayout.ipv4PoolId }}
   {{- $subnetIpv6IpamPoolId := $eff.subnetLayout.ipv6PoolId }}
+  {{- $planning := $state.network.ipam.resourcePlanning }}
+  {{- $ipv4PlanningRequested := $planning.ipv4.enabled }}
+  {{- $ipv6PlanningRequested := $planning.ipv6.enabled }}
+  {{- if $ipv4PlanningRequested }}
+    {{- $subnetIpv4IpamPoolId = $state.observed.ipamPlanning.ipv4.id }}
+  {{- end }}
+  {{- if $ipv6PlanningRequested }}
+    {{- $subnetIpv6IpamPoolId = $state.observed.ipamPlanning.ipv6.id }}
+  {{- end }}
+  {{- $planningPending := or
+    (and $ipv4PlanningRequested (eq $subnetIpv4IpamPoolId ""))
+    (and $ipv6PlanningRequested (eq $subnetIpv6IpamPoolId ""))
+  }}
+
+  # Hold subnets until every requested planning pool exists. Rendering CIDR-based
+  # subnets while a planning pool is pending would create the wrong immutable shape.
+  {{- if not $planningPending }}
 
   # --------------------------------------------------------------------------
   # IPAM Subnet Pool Path: allocate CIDRs from IPAM pool
@@ -371,6 +388,7 @@
     {{- end }}
   {{- end }}
 
+  {{- end }}
   {{- end }}
 {{- end }}
 

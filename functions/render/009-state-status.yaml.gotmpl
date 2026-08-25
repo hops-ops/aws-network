@@ -22,6 +22,12 @@
   {{- if $net.ipv6.gua.enabled }}
     {{- $ipamStatus = set $ipamStatus "ipv6Gua" (dict "cidr" ($obs.vpc.ipv6Cidr | default "Pending")) }}
   {{- end }}
+  {{- if or $net.ipam.resourcePlanning.ipv4.enabled $net.ipam.resourcePlanning.ipv6.enabled }}
+    {{- $ipamStatus = set $ipamStatus "resourcePlanning" (dict
+      "ipv4PoolId" ($obs.ipamPlanning.ipv4.id | default "Pending")
+      "ipv6PoolId" ($obs.ipamPlanning.ipv6.id | default "Pending")
+    ) }}
+  {{- end }}
 {{- end }}
 
 # ==============================================================================
@@ -170,8 +176,20 @@
 # ==============================================================================
 # Set $state.status slice
 # ==============================================================================
+{{- $ready := $obs.vpc.ready }}
+{{- if $net.ipam.resourcePlanning.ipv4.enabled }}
+  {{- $ready = and $ready $obs.ipamPlanning.ipv4.ready }}
+{{- end }}
+{{- if $net.ipam.resourcePlanning.ipv6.enabled }}
+  {{- $ready = and $ready $obs.ipamPlanning.ipv6.ready }}
+{{- end }}
+{{- range $subnet := concat $net.subnets.public $net.subnets.private }}
+  {{- $subnetObs := get $obs.subnets $subnet.resourceName | default dict }}
+  {{- $ready = and $ready ($subnetObs.ready | default false) }}
+{{- end }}
+
 {{- $status := dict
-  "ready" $obs.vpc.ready
+  "ready" $ready
   "network" $networkStatus
   "spec" (dict
     "raw" $state.spec.raw

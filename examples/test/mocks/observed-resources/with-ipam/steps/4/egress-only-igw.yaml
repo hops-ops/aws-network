@@ -1,6 +1,7 @@
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: EgressOnlyInternetGateway
 metadata:
+  namespace: infra
   name: with-ipam
   annotations:
     crossplane.io/composition-resource-name: egress-only-igw

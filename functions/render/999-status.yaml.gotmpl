@@ -28,6 +28,15 @@ status:
     ipv6Gua:
       cidr: {{ $s.ipam.ipv6Gua.cidr }}
     {{- end }}
+    {{- if $s.ipam.resourcePlanning }}
+    resourcePlanning:
+      {{- if $state.network.ipam.resourcePlanning.ipv4.enabled }}
+      ipv4PoolId: {{ $s.ipam.resourcePlanning.ipv4PoolId }}
+      {{- end }}
+      {{- if $state.network.ipam.resourcePlanning.ipv6.enabled }}
+      ipv6PoolId: {{ $s.ipam.resourcePlanning.ipv6PoolId }}
+      {{- end }}
+    {{- end }}
   {{- end }}
   network:
     name: {{ $net.name }}

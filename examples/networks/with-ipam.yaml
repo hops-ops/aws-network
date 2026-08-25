@@ -24,12 +24,19 @@ spec:
       # Regional Amazon-provided GUA pool; allocate one /56 to this VPC
       poolId: ipam-pool-0fedcba9876543210
       netmaskLength: 56
+    resourcePlanning:
+      # Planning pools are created in the central IPAM administrator account.
+      providerConfigRef:
+        name: network
+      ipv4:
+        enabled: true
+        scopeId: ipam-scope-0123456789abcdef0
+      ipv6:
+        enabled: true
+        scopeId: ipam-scope-0fedcba9876543210
 
-  # These are VPC resource-planning pools whose source resource is this VPC.
-  # They are not the regional pools above.
+  # Subnets allocate directly from the automatically created VPC planning pools.
   subnetLayout:
-    ipv4PoolId: ipam-pool-vpc-ipv4-0123456789abcdef0
-    ipv6PoolId: ipam-pool-vpc-ipv6-0123456789abcdef0
     ipv6NetmaskLength: 64
     availabilityZones:
     - a
