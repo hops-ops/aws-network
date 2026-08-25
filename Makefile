@@ -123,6 +123,7 @@ validate\:%: generate-configuration
 	@example="examples/networks/$*.yaml"; \
 	if [ -f "$$example" ]; then \
 		echo "=== Validating $$example ==="; \
+		set -o pipefail; \
 		up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example \
 			--include-full-xr --quiet | \
 			crossplane resource validate $(XRD_DIR) --error-on-missing-schemas -; \

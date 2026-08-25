@@ -103,6 +103,9 @@ spec:
                   ipv6Gua:
                     type: object
                     description: IPv6 global unicast address (GUA) VPC allocation from IPAM.
+                    x-kubernetes-validations:
+                    - rule: "!has(self.enabled) || !self.enabled || (has(self.poolId) && self.poolId != '')"
+                      message: poolId is required when ipv6Gua.enabled is true.
                     properties:
                       enabled:
                         type: boolean

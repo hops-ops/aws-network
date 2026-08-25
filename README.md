@@ -473,8 +473,11 @@ spec:
 | `resourcePlanning.providerConfigRef` | object | ProviderConfig for the IPAM administrator account |
 | `resourcePlanning.managementPolicies` | []string | Management operations for planning pools |
 | `resourcePlanning.ipv4.enabled` | boolean | Create an IPv4 planning pool sourced from the VPC |
+| `resourcePlanning.ipv4.externalName` | string | Existing IPv4 planning pool ID to import |
 | `resourcePlanning.ipv4.scopeId` | string | Private IPAM scope containing the IPv4 regional pool |
 | `resourcePlanning.ipv6.enabled` | boolean | Create an IPv6 planning pool sourced from the VPC |
+| `resourcePlanning.ipv6.externalName` | string | Existing IPv6 planning pool ID to import |
+| `resourcePlanning.ipv6.publicIpSource` | string | IPv6 public address source (`amazon` or `byoip`) |
 | `resourcePlanning.ipv6.scopeId` | string | IPAM scope containing the IPv6 regional pool |
 
 ### spec.subnetLayout

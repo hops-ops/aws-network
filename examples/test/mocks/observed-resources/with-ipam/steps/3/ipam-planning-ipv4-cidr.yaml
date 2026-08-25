@@ -13,6 +13,6 @@ status:
   - type: Synced
     status: "True"
   atProvider:
-    id: ipam-pool-vpc-ipv4-0123456789abcdef0_10.0.0.0/16
+    id: ipam-pool-vpc-ipv4-0123456789abcdef0_10.100.0.0/16
     ipamPoolId: ipam-pool-vpc-ipv4-0123456789abcdef0
-    cidr: 10.0.0.0/16
+    cidr: 10.100.0.0/16
