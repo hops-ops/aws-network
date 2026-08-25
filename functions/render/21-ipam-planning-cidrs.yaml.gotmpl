@@ -1,0 +1,97 @@
+# code: language=yaml
+#
+# Provision the workload VPC CIDRs into its resource-planning pools.
+# AWS requires this explicit step before the pools can allocate subnet CIDRs.
+# Depends on: $state.network, $state.observed.vpc, $state.observed.ipamPlanning
+#
+
+{{- $planning := $state.network.ipam.resourcePlanning }}
+{{- $vpc := $state.observed.vpc }}
+
+{{- if and $planning.ipv4.enabled (ne $state.observed.ipamPlanning.ipv4.id "") (ne $vpc.cidr "") }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidr
+metadata:
+  name: {{ $state.network.name }}-ipv4-planning-cidr
+  annotations:
+    {{ setResourceNameAnnotation "ipam-planning-ipv4-cidr" }}
+  labels: {{ $state.network.labels | toJson }}
+spec:
+  managementPolicies: {{ $planning.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    ipamPoolIdRef:
+      name: {{ $state.network.name }}-ipv4-planning
+    cidr: {{ $vpc.cidr }}
+  providerConfigRef:
+    name: {{ $planning.providerConfigRef.name }}
+    kind: {{ $planning.providerConfigRef.kind }}
+
+{{- $cidrObs := $state.observed.ipamPlanning.ipv4 }}
+{{- if and $cidrObs.ready $cidrObs.cidrReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-ipv4-planning-cidr-before-ipv4-planning
+  annotations:
+    {{ setResourceNameAnnotation "delete-ipv4-planning-cidr-before-ipv4-planning" }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv4-planning
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPoolCidr
+    resourceRef:
+      name: {{ $state.network.name }}-ipv4-planning-cidr
+{{- end }}
+{{- end }}
+
+{{- if and $planning.ipv6.enabled (ne $state.observed.ipamPlanning.ipv6.id "") (ne $vpc.ipv6Cidr "") }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidr
+metadata:
+  name: {{ $state.network.name }}-ipv6-planning-cidr
+  annotations:
+    {{ setResourceNameAnnotation "ipam-planning-ipv6-cidr" }}
+  labels: {{ $state.network.labels | toJson }}
+spec:
+  managementPolicies: {{ $planning.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    ipamPoolIdRef:
+      name: {{ $state.network.name }}-ipv6-planning
+    cidr: {{ $vpc.ipv6Cidr }}
+  providerConfigRef:
+    name: {{ $planning.providerConfigRef.name }}
+    kind: {{ $planning.providerConfigRef.kind }}
+
+{{- $cidrObs := $state.observed.ipamPlanning.ipv6 }}
+{{- if and $cidrObs.ready $cidrObs.cidrReady }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-ipv6-planning-cidr-before-ipv6-planning
+  annotations:
+    {{ setResourceNameAnnotation "delete-ipv6-planning-cidr-before-ipv6-planning" }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv6-planning
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPoolCidr
+    resourceRef:
+      name: {{ $state.network.name }}-ipv6-planning-cidr
+{{- end }}
+{{- end }}

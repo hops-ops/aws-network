@@ -157,6 +157,9 @@ spec:
                           scopeId:
                             type: string
                             description: Private IPAM scope ID in the IPAM administrator account.
+                          externalName:
+                            type: string
+                            description: Existing IPv4 VPC resource-planning pool ID to import.
                       ipv6:
                         type: object
                         description: IPv6 VPC resource-planning pool configuration.
@@ -168,6 +171,16 @@ spec:
                           scopeId:
                             type: string
                             description: IPAM scope ID containing the regional IPv6 source pool.
+                          externalName:
+                            type: string
+                            description: Existing IPv6 VPC resource-planning pool ID to import.
+                          publicIpSource:
+                            type: string
+                            description: Public IPv6 source inherited from the regional GUA pool.
+                            enum:
+                            - amazon
+                            - byoip
+                            default: amazon
 
               # Subnet layout - used with both IPAM and manual VPC CIDR
               subnetLayout:

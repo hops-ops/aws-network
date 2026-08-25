@@ -178,10 +178,10 @@
 # ==============================================================================
 {{- $ready := $obs.vpc.ready }}
 {{- if $net.ipam.resourcePlanning.ipv4.enabled }}
-  {{- $ready = and $ready $obs.ipamPlanning.ipv4.ready }}
+  {{- $ready = and $ready $obs.ipamPlanning.ipv4.ready $obs.ipamPlanning.ipv4.cidrReady }}
 {{- end }}
 {{- if $net.ipam.resourcePlanning.ipv6.enabled }}
-  {{- $ready = and $ready $obs.ipamPlanning.ipv6.ready }}
+  {{- $ready = and $ready $obs.ipamPlanning.ipv6.ready $obs.ipamPlanning.ipv6.cidrReady }}
 {{- end }}
 {{- range $subnet := concat $net.subnets.public $net.subnets.private }}
   {{- $subnetObs := get $obs.subnets $subnet.resourceName | default dict }}

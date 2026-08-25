@@ -14,9 +14,17 @@
   {{- $resource := $entry.resource | default dict }}
   {{- $status := $resource.status | default dict }}
   {{- $atProvider := $status.atProvider | default dict }}
+  {{- $cidrResourceName := printf "ipam-planning-%s-cidr" $family }}
+  {{- $cidrEntry := get $raw $cidrResourceName | default dict }}
+  {{- $cidrResource := $cidrEntry.resource | default dict }}
+  {{- $cidrStatus := $cidrResource.status | default dict }}
+  {{- $cidrAtProvider := $cidrStatus.atProvider | default dict }}
   {{- $planning = set $planning $family (dict
     "ready" (get $readiness $resourceName | default false)
     "id" ($atProvider.id | default "")
+    "cidrReady" (get $readiness $cidrResourceName | default false)
+    "cidrId" ($cidrAtProvider.id | default "")
+    "cidr" ($cidrAtProvider.cidr | default "")
   ) }}
 {{- end }}
 

@@ -69,9 +69,11 @@ spec:
       ipv4:
         enabled: true
         scopeId: ipam-scope-private0123456789
+        # externalName: ipam-pool-existing-ipv4-planning
       ipv6:
         enabled: true
         scopeId: ipam-scope-public0123456789
+        # externalName: ipam-pool-existing-ipv6-planning
   subnetLayout:
     ipv6NetmaskLength: 64
     availabilityZones: [a, b, c]
@@ -107,6 +109,11 @@ This saves ~$32/mo. Add NAT later if you need IPv4 egress to external services.
 For Amazon-provided IPv6 GUA, use a Regional IPAM pool (for example `/52`) to
 allocate a `/56` to each VPC. Subnets then allocate `/64`s from a VPC
 resource-planning pool whose source resource is that VPC.
+
+When the planning pools and workload VPC are in different AWS accounts, share
+the planning pools with the workload account or its OU through AWS RAM. The
+Foundation `ramShares` API can manage this after the Network status exposes the
+planning pool IDs.
 
 ### IPv6 Benefits
 - **EKS Auto Mode** - IPv6 prevents IP exhaustion when scaling

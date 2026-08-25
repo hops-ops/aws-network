@@ -17,6 +17,9 @@ metadata:
   name: {{ $state.network.name }}-ipv4-planning
   annotations:
     {{ setResourceNameAnnotation "ipam-planning-ipv4" }}
+    {{- if $planning.ipv4.externalName }}
+    crossplane.io/external-name: {{ $planning.ipv4.externalName | quote }}
+    {{- end }}
   labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $planning.managementPolicies | toJson }}
@@ -77,12 +80,19 @@ metadata:
   name: {{ $state.network.name }}-ipv6-planning
   annotations:
     {{ setResourceNameAnnotation "ipam-planning-ipv6" }}
+    {{- if $planning.ipv6.externalName }}
+    crossplane.io/external-name: {{ $planning.ipv6.externalName | quote }}
+    {{- end }}
   labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $planning.managementPolicies | toJson }}
   forProvider:
     region: {{ $state.network.region }}
     addressFamily: ipv6
+    {{- if $state.network.ipam.ipv6Gua.enabled }}
+    awsService: ec2
+    publicIpSource: {{ $planning.ipv6.publicIpSource }}
+    {{- end }}
     ipamScopeId: {{ $planning.ipv6.scopeId }}
     locale: {{ $state.network.region }}
     sourceIpamPoolId: {{ $ipv6SourcePoolId }}

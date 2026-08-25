@@ -108,17 +108,17 @@
     {{- $subnetIpv6IpamPoolId = $state.observed.ipamPlanning.ipv6.id }}
   {{- end }}
   {{- $planningPending := or
-    (and $ipv4PlanningRequested (eq $subnetIpv4IpamPoolId ""))
-    (and $ipv6PlanningRequested (eq $subnetIpv6IpamPoolId ""))
+    (and $ipv4PlanningRequested (or (eq $subnetIpv4IpamPoolId "") (eq $state.observed.ipamPlanning.ipv4.cidrId "")))
+    (and $ipv6PlanningRequested (or (eq $subnetIpv6IpamPoolId "") (eq $state.observed.ipamPlanning.ipv6.cidrId "")))
   }}
 
-  # Hold subnets until every requested planning pool exists. Rendering CIDR-based
-  # subnets while a planning pool is pending would create the wrong immutable shape.
+  # Hold subnets until every requested planning pool exists and its VPC CIDR has
+  # been provisioned. Gate on observed IDs, not transient readiness, so a later
+  # Ready=False cannot un-render and delete live subnets.
   {{- if not $planningPending }}
 
   # --------------------------------------------------------------------------
-  # IPAM Subnet Pool Path: allocate CIDRs from IPAM pool
-  # No VPC CIDR dependency — subnets render immediately
+  # IPAM Subnet Pool Path: allocate CIDRs from provisioned planning pools
   # --------------------------------------------------------------------------
   {{- if ne $subnetIpv4IpamPoolId "" }}
 

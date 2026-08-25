@@ -89,10 +89,13 @@
     "ipv4" (dict
       "enabled" ($resourcePlanningIpv4Spec.enabled | default false)
       "scopeId" ($resourcePlanningIpv4Spec.scopeId | default "")
+      "externalName" ($resourcePlanningIpv4Spec.externalName | default "")
     )
     "ipv6" (dict
       "enabled" ($resourcePlanningIpv6Spec.enabled | default false)
       "scopeId" ($resourcePlanningIpv6Spec.scopeId | default "")
+      "externalName" ($resourcePlanningIpv6Spec.externalName | default "")
+      "publicIpSource" ($resourcePlanningIpv6Spec.publicIpSource | default "amazon")
     )
   )
 }}
