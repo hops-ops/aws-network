@@ -24,6 +24,10 @@ status:
     ipv6Ula:
       cidr: {{ $s.ipam.ipv6Ula.cidr }}
     {{- end }}
+    {{- if $s.ipam.ipv6Gua }}
+    ipv6Gua:
+      cidr: {{ $s.ipam.ipv6Gua.cidr }}
+    {{- end }}
   {{- end }}
   network:
     name: {{ $net.name }}
@@ -33,6 +37,9 @@ status:
       ipv4: {{ $net.cidr.ipv4 }}
       {{- if $net.cidr.ipv6Ula }}
       ipv6Ula: {{ $net.cidr.ipv6Ula }}
+      {{- end }}
+      {{- if $net.cidr.ipv6Gua }}
+      ipv6Gua: {{ $net.cidr.ipv6Gua }}
       {{- end }}
       {{- if $net.cidr.ipv6AmazonProvided }}
       ipv6AmazonProvided: {{ $net.cidr.ipv6AmazonProvided }}
@@ -109,4 +116,3 @@ status:
       id: {{ $net.transitGatewayAttachment.id }}
       ready: {{ $net.transitGatewayAttachment.ready }}
     {{- end }}
-

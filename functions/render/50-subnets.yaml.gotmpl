@@ -11,7 +11,7 @@
 # Public Subnets
 # ==============================================================================
 {{- range $subnet := $state.network.subnets.public }}
-{{- if ne $subnet.cidr "" }}
+{{- if or (ne $subnet.cidr "") (ne ($subnet.ipv4IpamPoolId | default "") "") }}
 {{- $subnetExternalName := $subnet.externalName | default "" }}
 {{- $subnetMgmtPolicies := $subnet.managementPolicies | default $state.network.managementPolicies }}
 ---
@@ -34,10 +34,20 @@ spec:
     vpcIdRef:
       name: {{ $state.network.name }}
     mapPublicIpOnLaunch: {{ $subnet.mapPublicIpOnLaunch }}
+    {{- if ne ($subnet.ipv4IpamPoolId | default "") "" }}
+    ipv4IpamPoolId: {{ $subnet.ipv4IpamPoolId }}
+    ipv4NetmaskLength: {{ $subnet.ipv4NetmaskLength }}
+    {{- else }}
     cidrBlock: {{ $subnet.cidr }}
+    {{- end }}
     {{- if $subnet.assignIpv6AddressOnCreation }}
     assignIpv6AddressOnCreation: true
+    {{- if ne ($subnet.ipv6IpamPoolId | default "") "" }}
+    ipv6IpamPoolId: {{ $subnet.ipv6IpamPoolId }}
+    ipv6NetmaskLength: {{ $subnet.ipv6NetmaskLength }}
+    {{- else }}
     ipv6CidrBlock: {{ $subnet.ipv6CidrBlock }}
+    {{- end }}
     {{- end }}
     tags:
       {{ $subnet.tags | toYaml | nindent 6 }}
@@ -75,7 +85,7 @@ spec:
 # Private Subnets
 # ==============================================================================
 {{- range $subnet := $state.network.subnets.private }}
-{{- if ne $subnet.cidr "" }}
+{{- if or (ne $subnet.cidr "") (ne ($subnet.ipv4IpamPoolId | default "") "") }}
 {{- $subnetExternalName := $subnet.externalName | default "" }}
 {{- $subnetMgmtPolicies := $subnet.managementPolicies | default $state.network.managementPolicies }}
 ---
@@ -98,10 +108,20 @@ spec:
     vpcIdRef:
       name: {{ $state.network.name }}
     mapPublicIpOnLaunch: {{ $subnet.mapPublicIpOnLaunch }}
+    {{- if ne ($subnet.ipv4IpamPoolId | default "") "" }}
+    ipv4IpamPoolId: {{ $subnet.ipv4IpamPoolId }}
+    ipv4NetmaskLength: {{ $subnet.ipv4NetmaskLength }}
+    {{- else }}
     cidrBlock: {{ $subnet.cidr }}
+    {{- end }}
     {{- if $subnet.assignIpv6AddressOnCreation }}
     assignIpv6AddressOnCreation: true
+    {{- if ne ($subnet.ipv6IpamPoolId | default "") "" }}
+    ipv6IpamPoolId: {{ $subnet.ipv6IpamPoolId }}
+    ipv6NetmaskLength: {{ $subnet.ipv6NetmaskLength }}
+    {{- else }}
     ipv6CidrBlock: {{ $subnet.ipv6CidrBlock }}
+    {{- end }}
     {{- end }}
     tags:
       {{ $subnet.tags | toYaml | nindent 6 }}
@@ -136,4 +156,3 @@ spec:
 {{- end }}
 
 {{- end }}
-

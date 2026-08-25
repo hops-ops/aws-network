@@ -282,7 +282,7 @@ _items = [
         }
     },
 
-    # Test: ipam.ipv4.enabled=true uses IPAM pool allocation
+    # Test: VPC and subnets use their respective IPAM pools
     metav1alpha1.CompositionTest {
         metadata.name = "ipam-enabled-uses-pool-id"
         spec = {
@@ -300,8 +300,21 @@ _items = [
                         ipv4 = {
                             enabled = True
                             poolId = "ipam-pool-0123456789abcdef0"
-                            vpc = {netmaskLength = 16}
+                            netmaskLength = 16
                         }
+                        ipv6Gua = {
+                            enabled = True
+                            poolId = "ipam-pool-0fedcba9876543210"
+                            netmaskLength = 56
+                        }
+                    }
+                    subnetLayout = {
+                        ipv4PoolId = "ipam-pool-vpc-ipv4-0123456789abcdef0"
+                        ipv6PoolId = "ipam-pool-vpc-ipv6-0123456789abcdef0"
+                        ipv6NetmaskLength = 64
+                        availabilityZones = ["a"]
+                        public = {enabled = True, netmaskLength = 24}
+                        private = {enabled = False}
                     }
                 }
             }
@@ -313,6 +326,20 @@ _items = [
                     spec.forProvider = {
                         ipv4IpamPoolId = "ipam-pool-0123456789abcdef0"
                         ipv4NetmaskLength = 16
+                        ipv6IpamPoolId = "ipam-pool-0fedcba9876543210"
+                        ipv6NetmaskLength = 56
+                    }
+                }
+                {
+                    apiVersion = "ec2.aws.m.upbound.io/v1beta1"
+                    kind = "Subnet"
+                    metadata.name = "test-ipam-public-a"
+                    spec.forProvider = {
+                        ipv4IpamPoolId = "ipam-pool-vpc-ipv4-0123456789abcdef0"
+                        ipv4NetmaskLength = 24
+                        ipv6IpamPoolId = "ipam-pool-vpc-ipv6-0123456789abcdef0"
+                        ipv6NetmaskLength = 64
+                        assignIpv6AddressOnCreation = True
                     }
                 }
             ]

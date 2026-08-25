@@ -63,12 +63,12 @@ spec:
                     description: Kind of the provider config reference.
                     default: ProviderConfig
 
-              # IPAM - allocate VPC CIDR from IPAM pool, subnets calculated via cidrmath
+              # IPAM - allocate VPC CIDRs from regional IPAM pools
               ipam:
                 type: object
                 description: |
-                  Enable automatic VPC CIDR allocation from an IPAM pool.
-                  Subnet CIDRs are calculated from the VPC CIDR using cidrmath.
+                  Enable automatic VPC CIDR allocation from regional IPAM pools.
+                  Subnet allocation is configured separately through subnetLayout.
                 properties:
                   ipv4:
                     type: object
@@ -100,14 +100,47 @@ spec:
                         type: integer
                         description: Netmask length for VPC IPv6 CIDR. AWS requires /56.
                         default: 56
+                  ipv6Gua:
+                    type: object
+                    description: IPv6 global unicast address (GUA) VPC allocation from IPAM.
+                    properties:
+                      enabled:
+                        type: boolean
+                        description: Enable IPv6 GUA CIDR allocation from a regional IPAM pool.
+                        default: false
+                      poolId:
+                        type: string
+                        description: Regional Amazon-provided or BYOIP IPv6 IPAM pool ID.
+                      netmaskLength:
+                        type: integer
+                        description: Netmask length allocated to the VPC (typically /56).
+                        default: 56
 
               # Subnet layout - used with both IPAM and manual VPC CIDR
               subnetLayout:
                 type: object
                 description: |
-                  Subnet layout configuration. When using IPAM, subnets are
-                  automatically calculated from the VPC CIDR using cidrmath.
+                  Subnet layout configuration. When ipv4PoolId is set, subnets
+                  allocate IPv4 CIDRs from a VPC resource-planning IPAM pool.
+                  Otherwise, IPv4 CIDRs are calculated from the VPC CIDR. When
+                  ipv6PoolId is set, each subnet allocates an IPv6 CIDR from its
+                  VPC resource-planning pool.
                 properties:
+                  ipv4PoolId:
+                    type: string
+                    description: |
+                      IPv4 VPC resource-planning IPAM pool ID whose source resource
+                      is this VPC. Do not use the regional pool that allocates VPC CIDRs.
+                  ipv6PoolId:
+                    type: string
+                    description: |
+                      IPv6 VPC resource-planning IPAM pool ID whose source resource
+                      is this VPC. Do not use the regional /52 pool that allocates
+                      VPC /56 CIDRs.
+                  ipv6NetmaskLength:
+                    type: integer
+                    description: IPv6 netmask length allocated to each subnet.
+                    default: 64
                   availabilityZones:
                     type: array
                     description: AZ suffixes for subnet creation (e.g., ["a", "b", "c"]).
@@ -492,6 +525,13 @@ spec:
                       cidr:
                         type: string
                         description: Allocated VPC IPv6 ULA CIDR from IPAM.
+                  ipv6Gua:
+                    type: object
+                    description: IPv6 GUA IPAM allocation status.
+                    properties:
+                      cidr:
+                        type: string
+                        description: Allocated VPC IPv6 GUA CIDR from IPAM.
               network:
                 type: object
                 properties:
@@ -507,6 +547,8 @@ spec:
                       ipv4:
                         type: string
                       ipv6Ula:
+                        type: string
+                      ipv6Gua:
                         type: string
                       ipv6AmazonProvided:
                         type: string

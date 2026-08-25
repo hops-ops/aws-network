@@ -17,12 +17,13 @@
 # Layout mode: using subnetLayout to auto-calculate subnets (works with both IPAM and manual)
 {{- $layoutMode := or $ipamMode (and $manualMode (gt (len $eff.subnetLayout.availabilityZones) 0) (eq (len $eff.subnets) 0)) }}
 
-# IPv6 enabled flag (from ULA, Amazon-provided, or IPAM allocation)
-{{- $ulaEnabled := $eff.ipv6.ula.enabled }}
-{{- if $eff.ipam.ipv6Ula.enabled }}
-  {{- $ulaEnabled = true }}
-{{- end }}
-{{- $hasIpv6 := or $ulaEnabled $eff.ipv6.amazonProvided.enabled }}
+# IPv6 source precedence: GUA IPAM, ULA, then direct Amazon-provided allocation.
+# Normalizing here prevents conflicting provider fields if callers set more than one.
+{{- $guaEnabled := $eff.ipam.ipv6Gua.enabled }}
+{{- $ulaRequested := or $eff.ipv6.ula.enabled $eff.ipam.ipv6Ula.enabled }}
+{{- $ulaEnabled := and (not $guaEnabled) $ulaRequested }}
+{{- $amazonEnabled := and (not $guaEnabled) (not $ulaEnabled) $eff.ipv6.amazonProvided.enabled }}
+{{- $hasIpv6 := or $ulaEnabled $guaEnabled $amazonEnabled }}
 
 # ==============================================================================
 # Set $state.network core slice
@@ -47,11 +48,13 @@
       "ipamPoolId" $eff.ipv6.ula.ipamPoolId
     )
     "amazon" (dict
-      "enabled" $eff.ipv6.amazonProvided.enabled
+      "enabled" $amazonEnabled
+    )
+    "gua" (dict
+      "enabled" $guaEnabled
     )
   )
   "ipam" $eff.ipam
 }}
 
 {{- $state = set $state "network" $network }}
-

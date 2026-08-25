@@ -12,12 +12,15 @@
 # Compute IPAM Status (only if in IPAM mode)
 # ==============================================================================
 {{- $ipamStatus := dict }}
-{{- if $net.mode.ipam }}
+{{- if or $net.ipam.ipv4.enabled (and $net.ipam.ipv6Ula.enabled $net.ipv6.ula.enabled) $net.ipv6.gua.enabled }}
   {{- if $net.ipam.ipv4.enabled }}
     {{- $ipamStatus = set $ipamStatus "ipv4" (dict "cidr" ($obs.vpc.cidr | default "Pending")) }}
   {{- end }}
-  {{- if $net.ipam.ipv6Ula.enabled }}
+  {{- if and $net.ipam.ipv6Ula.enabled $net.ipv6.ula.enabled }}
     {{- $ipamStatus = set $ipamStatus "ipv6Ula" (dict "cidr" ($obs.vpc.ipv6Cidr | default "Pending")) }}
+  {{- end }}
+  {{- if $net.ipv6.gua.enabled }}
+    {{- $ipamStatus = set $ipamStatus "ipv6Gua" (dict "cidr" ($obs.vpc.ipv6Cidr | default "Pending")) }}
   {{- end }}
 {{- end }}
 
@@ -27,6 +30,9 @@
 {{- $cidrStatus := dict "ipv4" ($obs.vpc.cidr | default "Pending") }}
 {{- if $net.ipv6.ula.enabled }}
   {{- $cidrStatus = set $cidrStatus "ipv6Ula" ($obs.vpc.ipv6Cidr | default "Pending") }}
+{{- end }}
+{{- if $net.ipv6.gua.enabled }}
+  {{- $cidrStatus = set $cidrStatus "ipv6Gua" ($obs.vpc.ipv6Cidr | default "Pending") }}
 {{- end }}
 {{- if $net.ipv6.amazon.enabled }}
   {{- $cidrStatus = set $cidrStatus "ipv6AmazonProvided" ($obs.vpc.ipv6Cidr | default "Pending") }}
@@ -173,9 +179,8 @@
   )
 }}
 
-{{- if $net.mode.ipam }}
+{{- if or $net.ipam.ipv4.enabled (and $net.ipam.ipv6Ula.enabled $net.ipv6.ula.enabled) $net.ipv6.gua.enabled }}
   {{- $status = set $status "ipam" $ipamStatus }}
 {{- end }}
 
 {{- $state = set $state "status" $status }}
-

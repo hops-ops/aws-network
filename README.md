@@ -58,11 +58,15 @@ spec:
       enabled: true
       poolId: ipam-pool-0123456789abcdef0
       netmaskLength: 16
-    ipv6Ula:
+    ipv6Gua:
       enabled: true
       poolId: ipam-pool-0fedcba9876543210
       netmaskLength: 56
   subnetLayout:
+    # VPC resource-planning pools, not the regional VPC allocation pools above
+    ipv4PoolId: ipam-pool-vpc-ipv4-0123456789abcdef0
+    ipv6PoolId: ipam-pool-vpc-ipv6-0123456789abcdef0
+    ipv6NetmaskLength: 64
     availabilityZones: [a, b, c]
     public:
       enabled: true
@@ -92,6 +96,10 @@ This saves ~$32/mo. Add NAT later if you need IPv4 egress to external services.
 - **No CIDR planning** - Automatic allocation from centrally managed pools
 - **No conflicts** - IPAM prevents overlapping ranges across VPCs
 - **Multi-account ready** - Share pools via RAM when you scale
+
+For Amazon-provided IPv6 GUA, use a Regional IPAM pool (for example `/52`) to
+allocate a `/56` to each VPC. Subnets then allocate `/64`s from a VPC
+resource-planning pool whose source resource is that VPC.
 
 ### IPv6 Benefits
 - **EKS Auto Mode** - IPv6 prevents IP exhaustion when scaling
@@ -445,11 +453,17 @@ spec:
 | `ipv6Ula.enabled` | boolean | Enable IPv6 ULA CIDR allocation from IPAM |
 | `ipv6Ula.poolId` | string | IPAM pool ID for IPv6 |
 | `ipv6Ula.netmaskLength` | int | VPC IPv6 netmask (default: 56) |
+| `ipv6Gua.enabled` | boolean | Enable IPv6 GUA allocation from a regional IPAM pool |
+| `ipv6Gua.poolId` | string | Regional Amazon-provided or BYOIP IPv6 IPAM pool ID |
+| `ipv6Gua.netmaskLength` | int | VPC IPv6 netmask (default: 56) |
 
 ### spec.subnetLayout
 
 | Field | Type | Description |
 |-------|------|-------------|
+| `ipv4PoolId` | string | IPv4 VPC resource-planning IPAM pool ID |
+| `ipv6PoolId` | string | IPv6 VPC resource-planning IPAM pool ID |
+| `ipv6NetmaskLength` | int | IPv6 subnet netmask (default: 64) |
 | `availabilityZones` | []string | AZs for subnet creation (default: [a, b, c]) |
 | `public.enabled` | boolean | Create public subnets (default: true) |
 | `public.netmaskLength` | int | Public subnet netmask (default: 24) |
@@ -493,6 +507,8 @@ status:
       cidr: "10.100.0.0/16"
     ipv6Ula:
       cidr: "fd00:dead:beef::/56"
+    ipv6Gua:
+      cidr: "2600:1f18:abc::/56"
   network:
     name: my-network
     region: us-east-1
@@ -500,6 +516,7 @@ status:
     cidr:
       ipv4: "10.100.0.0/16"
       ipv6Ula: "fd00:dead:beef::/56"
+      ipv6Gua: "2600:1f18:abc::/56"
       ipv6AmazonProvided: "2600:1f18:abc::/56"  # If using Amazon-provided
     availabilityZones:
       - us-east-1a
