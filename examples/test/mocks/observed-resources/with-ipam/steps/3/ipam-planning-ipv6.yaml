@@ -1,0 +1,25 @@
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPool
+metadata:
+  namespace: infra
+  name: with-ipam-ipv6-planning
+  annotations:
+    crossplane.io/composition-resource-name: ipam-planning-ipv6
+    gotemplating.fn.crossplane.io/composition-resource-name: ipam-planning-ipv6
+status:
+  conditions:
+  - type: Ready
+    status: "True"
+  - type: Synced
+    status: "True"
+  atProvider:
+    id: ipam-pool-vpc-ipv6-0123456789abcdef0
+    addressFamily: ipv6
+    ipamScopeId: ipam-scope-0fedcba9876543210
+    locale: us-east-1
+    sourceIpamPoolId: ipam-pool-0fedcba9876543210
+    sourceResource:
+      resourceId: vpc-0123456789abcdef0
+      resourceOwner: "123456789012"
+      resourceRegion: us-east-1
+      resourceType: vpc

@@ -1,6 +1,7 @@
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: EIP
 metadata:
+  namespace: infra
   name: with-ipam-nat-a
   annotations:
     crossplane.io/composition-resource-name: eip-nat-a

@@ -96,6 +96,115 @@
   {{- $numAzs := len $availabilityZones }}
   {{- $vpcCidr := $state.network.vpc.cidr }}
   {{- $vpcIpv6Cidr := $state.network.vpc.ipv6Cidr }}
+  {{- $subnetIpv4IpamPoolId := $eff.subnetLayout.ipv4PoolId }}
+  {{- $subnetIpv6IpamPoolId := $eff.subnetLayout.ipv6PoolId }}
+  {{- $planning := $state.network.ipam.resourcePlanning }}
+  {{- $ipv4PlanningRequested := $planning.ipv4.enabled }}
+  {{- $ipv6PlanningRequested := $planning.ipv6.enabled }}
+  {{- if $ipv4PlanningRequested }}
+    {{- $subnetIpv4IpamPoolId = $state.observed.ipamPlanning.ipv4.id }}
+  {{- end }}
+  {{- if $ipv6PlanningRequested }}
+    {{- $subnetIpv6IpamPoolId = $state.observed.ipamPlanning.ipv6.id }}
+  {{- end }}
+  {{- $planningPending := or
+    (and $ipv4PlanningRequested (or (eq $subnetIpv4IpamPoolId "") (eq $state.observed.ipamPlanning.ipv4.cidrId "")))
+    (and $ipv6PlanningRequested (or (eq $subnetIpv6IpamPoolId "") (eq $state.observed.ipamPlanning.ipv6.cidrId "")))
+  }}
+
+  # Hold subnets until every requested planning pool exists and its VPC CIDR has
+  # been provisioned. Gate on observed IDs, not transient readiness, so a later
+  # Ready=False cannot un-render and delete live subnets.
+  {{- if not $planningPending }}
+
+  # --------------------------------------------------------------------------
+  # IPAM Subnet Pool Path: allocate CIDRs from provisioned planning pools
+  # --------------------------------------------------------------------------
+  {{- if ne $subnetIpv4IpamPoolId "" }}
+
+    {{- $azIndex := 0 }}
+    {{- range $az := $availabilityZones }}
+      {{- $fullAz := printf "%s%s" $state.network.region $az }}
+
+      # Public subnet via IPAM
+      {{- if $eff.subnetLayout.public.enabled }}
+        {{- $subnetName := printf "%s-public-%s" $state.network.name $az }}
+        {{- $subnetKey := printf "public-%s" $az }}
+        {{- $subnetExternalName := get $eff.subnetLayout.externalNames $subnetKey | default "" }}
+
+        {{- $subnetTags := merge (dict) $state.network.tags (dict
+          "Name" $subnetName
+          "hops.ops.com.ai/tier" "public"
+          "hops.ops.com.ai/az" $az
+          "kubernetes.io/role/elb" "1"
+        ) }}
+
+        {{- $config := dict
+          "name" $subnetName
+          "externalName" $subnetExternalName
+          "managementPolicies" $eff.subnetLayout.managementPolicies
+          "resourceName" (printf "subnet-public-%s" $az)
+          "cidr" ""
+          "ipv4IpamPoolId" $subnetIpv4IpamPoolId
+          "ipv4NetmaskLength" $eff.subnetLayout.public.netmaskLength
+          "ipv6IpamPoolId" $subnetIpv6IpamPoolId
+          "ipv6NetmaskLength" $eff.subnetLayout.ipv6NetmaskLength
+          "az" $fullAz
+          "azSuffix" $az
+          "public" true
+          "mapPublicIpOnLaunch" true
+          "tags" $subnetTags
+          "labels" (merge (dict) $state.network.labels (dict "hops.ops.com.ai/tier" "public" "hops.ops.com.ai/az" $az))
+          "ipv6CidrBlock" ""
+          "assignIpv6AddressOnCreation" (ne $subnetIpv6IpamPoolId "")
+        }}
+
+        {{- $publicSubnets = append $publicSubnets $config }}
+      {{- end }}
+
+      # Private subnet via IPAM
+      {{- if $eff.subnetLayout.private.enabled }}
+        {{- $subnetName := printf "%s-private-%s" $state.network.name $az }}
+        {{- $subnetKey := printf "private-%s" $az }}
+        {{- $subnetExternalName := get $eff.subnetLayout.externalNames $subnetKey | default "" }}
+
+        {{- $subnetTags := merge (dict) $state.network.tags (dict
+          "Name" $subnetName
+          "hops.ops.com.ai/tier" "private"
+          "hops.ops.com.ai/az" $az
+          "kubernetes.io/role/internal-elb" "1"
+        ) }}
+
+        {{- $config := dict
+          "name" $subnetName
+          "externalName" $subnetExternalName
+          "managementPolicies" $eff.subnetLayout.managementPolicies
+          "resourceName" (printf "subnet-private-%s" $az)
+          "cidr" ""
+          "ipv4IpamPoolId" $subnetIpv4IpamPoolId
+          "ipv4NetmaskLength" $eff.subnetLayout.private.netmaskLength
+          "ipv6IpamPoolId" $subnetIpv6IpamPoolId
+          "ipv6NetmaskLength" $eff.subnetLayout.ipv6NetmaskLength
+          "az" $fullAz
+          "azSuffix" $az
+          "public" false
+          "mapPublicIpOnLaunch" false
+          "tags" $subnetTags
+          "labels" (merge (dict) $state.network.labels (dict "hops.ops.com.ai/tier" "private" "hops.ops.com.ai/az" $az))
+          "ipv6CidrBlock" ""
+          "assignIpv6AddressOnCreation" (ne $subnetIpv6IpamPoolId "")
+        }}
+
+        {{- $privateSubnets = append $privateSubnets $config }}
+      {{- end }}
+
+      {{- $azIndex = add $azIndex 1 }}
+    {{- end }}
+
+  # --------------------------------------------------------------------------
+  # cidrmath Path: calculate subnet CIDRs from VPC CIDR (existing behavior)
+  # --------------------------------------------------------------------------
+  {{- else }}
 
   # Only calculate subnets if we have a VPC CIDR
   {{- if ne $vpcCidr "" }}
@@ -131,7 +240,7 @@
 
         # Calculate IPv6 subnet for public - only Amazon-provided (not ULA)
         {{- $ipv6AmazonCidr := "" }}
-        {{- if and $state.network.ipv6.amazon.enabled (ne $vpcIpv6Cidr "") }}
+        {{- if and (eq $subnetIpv6IpamPoolId "") (or $state.network.ipv6.amazon.enabled $state.network.ipv6.gua.enabled) (ne $vpcIpv6Cidr "") }}
           {{- $ipv6Parts := splitList "/" $vpcIpv6Cidr }}
           {{- $ipv6Base := index $ipv6Parts 0 }}
           {{- $ipv6Groups := splitList ":" (trimSuffix "::" $ipv6Base) }}
@@ -163,7 +272,7 @@
         ) }}
 
         {{- $ipv6CidrBlock := $ipv6AmazonCidr }}
-        {{- $assignIpv6 := ne $ipv6CidrBlock "" }}
+        {{- $assignIpv6 := or (ne $subnetIpv6IpamPoolId "") (ne $ipv6CidrBlock "") }}
 
         # Get externalName from layout map (key = "public-{az}")
         {{- $subnetKey := printf "public-%s" $az }}
@@ -181,6 +290,8 @@
           "mapPublicIpOnLaunch" true
           "tags" $subnetTags
           "labels" (merge (dict) $state.network.labels (dict "hops.ops.com.ai/tier" "public" "hops.ops.com.ai/az" $az))
+          "ipv6IpamPoolId" $subnetIpv6IpamPoolId
+          "ipv6NetmaskLength" $eff.subnetLayout.ipv6NetmaskLength
           "ipv6CidrBlock" $ipv6CidrBlock
           "assignIpv6AddressOnCreation" $assignIpv6
         }}
@@ -198,7 +309,7 @@
         # Calculate IPv6 subnets for private - supports both ULA and Amazon-provided
         {{- $ipv6UlaCidr := "" }}
         {{- $ipv6AmazonCidr := "" }}
-        {{- if ne $vpcIpv6Cidr "" }}
+        {{- if and (eq $subnetIpv6IpamPoolId "") (ne $vpcIpv6Cidr "") }}
           {{- $ipv6Parts := splitList "/" $vpcIpv6Cidr }}
           {{- $ipv6Base := index $ipv6Parts 0 }}
           {{- $ipv6Groups := splitList ":" (trimSuffix "::" $ipv6Base) }}
@@ -224,7 +335,7 @@
             {{- $ipv6UlaCidr = printf "%s:%s:%s:%s::/64" $g1 $g2 $g3 $newG4 }}
           {{- end }}
           # Amazon-provided IPv6 for private subnets (offset after public subnets)
-          {{- if $state.network.ipv6.amazon.enabled }}
+          {{- if or $state.network.ipv6.amazon.enabled $state.network.ipv6.gua.enabled }}
             {{- $ipv6PrivateIndex := add $azIndex $numAzs }}
             {{- $subnetHex := "" }}
             {{- if ne $g4Base "" }}
@@ -246,7 +357,7 @@
 
         # Compute final IPv6 values for this subnet (ULA preferred over Amazon-provided)
         {{- $ipv6CidrBlock := $ipv6UlaCidr | default $ipv6AmazonCidr }}
-        {{- $assignIpv6 := ne $ipv6CidrBlock "" }}
+        {{- $assignIpv6 := or (ne $subnetIpv6IpamPoolId "") (ne $ipv6CidrBlock "") }}
 
         # Get externalName from layout map (key = "private-{az}")
         {{- $subnetKey := printf "private-%s" $az }}
@@ -264,6 +375,8 @@
           "mapPublicIpOnLaunch" false
           "tags" $subnetTags
           "labels" (merge (dict) $state.network.labels (dict "hops.ops.com.ai/tier" "private" "hops.ops.com.ai/az" $az))
+          "ipv6IpamPoolId" $subnetIpv6IpamPoolId
+          "ipv6NetmaskLength" $eff.subnetLayout.ipv6NetmaskLength
           "ipv6CidrBlock" $ipv6CidrBlock
           "assignIpv6AddressOnCreation" $assignIpv6
         }}
@@ -273,6 +386,9 @@
 
       {{- $azIndex = add $azIndex 1 }}
     {{- end }}
+  {{- end }}
+
+  {{- end }}
   {{- end }}
 {{- end }}
 

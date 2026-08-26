@@ -24,6 +24,19 @@ status:
     ipv6Ula:
       cidr: {{ $s.ipam.ipv6Ula.cidr }}
     {{- end }}
+    {{- if $s.ipam.ipv6Gua }}
+    ipv6Gua:
+      cidr: {{ $s.ipam.ipv6Gua.cidr }}
+    {{- end }}
+    {{- if $s.ipam.resourcePlanning }}
+    resourcePlanning:
+      {{- if $state.network.ipam.resourcePlanning.ipv4.enabled }}
+      ipv4PoolId: {{ $s.ipam.resourcePlanning.ipv4PoolId }}
+      {{- end }}
+      {{- if $state.network.ipam.resourcePlanning.ipv6.enabled }}
+      ipv6PoolId: {{ $s.ipam.resourcePlanning.ipv6PoolId }}
+      {{- end }}
+    {{- end }}
   {{- end }}
   network:
     name: {{ $net.name }}
@@ -33,6 +46,9 @@ status:
       ipv4: {{ $net.cidr.ipv4 }}
       {{- if $net.cidr.ipv6Ula }}
       ipv6Ula: {{ $net.cidr.ipv6Ula }}
+      {{- end }}
+      {{- if $net.cidr.ipv6Gua }}
+      ipv6Gua: {{ $net.cidr.ipv6Gua }}
       {{- end }}
       {{- if $net.cidr.ipv6AmazonProvided }}
       ipv6AmazonProvided: {{ $net.cidr.ipv6AmazonProvided }}
@@ -109,4 +125,3 @@ status:
       id: {{ $net.transitGatewayAttachment.id }}
       ready: {{ $net.transitGatewayAttachment.ready }}
     {{- end }}
-

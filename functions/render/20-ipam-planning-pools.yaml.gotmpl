@@ -1,0 +1,133 @@
+# code: language=yaml
+#
+# VPC resource-planning IPAM pools.
+# These are managed from the IPAM administrator account after the workload VPC exists.
+# Depends on: $state.network, $state.observed.vpc
+#
+
+{{- $planning := $state.network.ipam.resourcePlanning }}
+{{- $vpc := $state.observed.vpc }}
+{{- $canSourceVpc := and (ne $vpc.id "") (ne $vpc.ownerId "") }}
+
+{{- if and $canSourceVpc $planning.ipv4.enabled (ne $planning.ipv4.scopeId "") $state.network.ipam.ipv4.enabled (ne $state.network.ipam.ipv4.poolId "") }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPool
+metadata:
+  name: {{ $state.network.name }}-ipv4-planning
+  annotations:
+    {{ setResourceNameAnnotation "ipam-planning-ipv4" }}
+    {{- if $planning.ipv4.externalName }}
+    crossplane.io/external-name: {{ $planning.ipv4.externalName | quote }}
+    {{- end }}
+  labels: {{ $state.network.labels | toJson }}
+spec:
+  managementPolicies: {{ $planning.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    addressFamily: ipv4
+    ipamScopeId: {{ $planning.ipv4.scopeId }}
+    locale: {{ $state.network.region }}
+    sourceIpamPoolId: {{ $state.network.ipam.ipv4.poolId }}
+    sourceResource:
+      resourceId: {{ $vpc.id }}
+      resourceOwner: {{ $vpc.ownerId | quote }}
+      resourceRegion: {{ $state.network.region }}
+      resourceType: vpc
+    tags:
+      Name: {{ $state.network.name }}-ipv4-planning
+      {{ $state.network.tags | toYaml | nindent 6 }}
+  providerConfigRef:
+    name: {{ $planning.providerConfigRef.name }}
+    kind: {{ $planning.providerConfigRef.kind }}
+
+{{- $planningObs := $state.observed.ipamPlanning.ipv4 }}
+{{- if and $vpc.ready $planningObs.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-ipv4-planning-before-vpc
+  annotations:
+    {{ setResourceNameAnnotation "delete-ipv4-planning-before-vpc" }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPC
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv4-planning
+{{- end }}
+{{- end }}
+
+{{- $ipv6SourcePoolId := "" }}
+{{- if $state.network.ipam.ipv6Gua.enabled }}
+  {{- $ipv6SourcePoolId = $state.network.ipam.ipv6Gua.poolId }}
+{{- else if $state.network.ipam.ipv6Ula.enabled }}
+  {{- $ipv6SourcePoolId = $state.network.ipam.ipv6Ula.poolId }}
+{{- end }}
+
+{{- if and $canSourceVpc $planning.ipv6.enabled (ne $planning.ipv6.scopeId "") (ne $ipv6SourcePoolId "") }}
+---
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPool
+metadata:
+  name: {{ $state.network.name }}-ipv6-planning
+  annotations:
+    {{ setResourceNameAnnotation "ipam-planning-ipv6" }}
+    {{- if $planning.ipv6.externalName }}
+    crossplane.io/external-name: {{ $planning.ipv6.externalName | quote }}
+    {{- end }}
+  labels: {{ $state.network.labels | toJson }}
+spec:
+  managementPolicies: {{ $planning.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.network.region }}
+    addressFamily: ipv6
+    {{- if $state.network.ipam.ipv6Gua.enabled }}
+    awsService: ec2
+    publicIpSource: {{ $planning.ipv6.publicIpSource }}
+    {{- end }}
+    ipamScopeId: {{ $planning.ipv6.scopeId }}
+    locale: {{ $state.network.region }}
+    sourceIpamPoolId: {{ $ipv6SourcePoolId }}
+    sourceResource:
+      resourceId: {{ $vpc.id }}
+      resourceOwner: {{ $vpc.ownerId | quote }}
+      resourceRegion: {{ $state.network.region }}
+      resourceType: vpc
+    tags:
+      Name: {{ $state.network.name }}-ipv6-planning
+      {{ $state.network.tags | toYaml | nindent 6 }}
+  providerConfigRef:
+    name: {{ $planning.providerConfigRef.name }}
+    kind: {{ $planning.providerConfigRef.kind }}
+
+{{- $planningObs := $state.observed.ipamPlanning.ipv6 }}
+{{- if and $vpc.ready $planningObs.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.network.name }}-delete-ipv6-planning-before-vpc
+  annotations:
+    {{ setResourceNameAnnotation "delete-ipv6-planning-before-vpc" }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPC
+    resourceRef:
+      name: {{ $state.network.name }}
+  by:
+    apiVersion: ec2.aws.m.upbound.io/v1beta1
+    kind: VPCIpamPool
+    resourceRef:
+      name: {{ $state.network.name }}-ipv6-planning
+{{- end }}
+{{- end }}

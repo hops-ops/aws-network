@@ -19,17 +19,25 @@ spec:
       # Pool ID from aws-ipam status
       poolId: ipam-pool-0123456789abcdef0
       netmaskLength: 16
-    ipv6Ula:
+    ipv6Gua:
       enabled: true
-      # ULA pool ID from aws-ipam status
+      # Regional Amazon-provided GUA pool; allocate one /56 to this VPC
       poolId: ipam-pool-0fedcba9876543210
-      netmaskLength: 56  # AWS requires /56 for VPC IPv6
+      netmaskLength: 56
+    resourcePlanning:
+      # Planning pools are created in the central IPAM administrator account.
+      providerConfigRef:
+        name: network
+      ipv4:
+        enabled: true
+        scopeId: ipam-scope-0123456789abcdef0
+      ipv6:
+        enabled: true
+        scopeId: ipam-scope-0fedcba9876543210
 
-  # Subnet layout - CIDRs calculated from VPC CIDR via cidrmath
-  # This is meant to be temporary until Terraform/Crossplane support for IPAM
-  # subnet allocations is available
-  # https://github.com/hops-ops/aws-network/pull/7
+  # Subnets allocate directly from the automatically created VPC planning pools.
   subnetLayout:
+    ipv6NetmaskLength: 64
     availabilityZones:
     - a
     - b

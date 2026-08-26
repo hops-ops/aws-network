@@ -31,10 +31,11 @@ spec:
     # Use explicit CIDR
     cidrBlock: {{ $state.network.vpc.cidr }}
     {{- end }}
-    {{- if $state.network.ipv6.amazon.enabled }}
-    assignGeneratedIpv6CidrBlock: true
-    {{- end }}
-    {{- if $state.network.ipam.ipv6Ula.enabled }}
+    {{- if $state.network.ipam.ipv6Gua.enabled }}
+    # Allocate an IPv6 GUA /56 from a regional IPAM pool
+    ipv6IpamPoolId: {{ $state.network.ipam.ipv6Gua.poolId }}
+    ipv6NetmaskLength: {{ $state.network.ipam.ipv6Gua.netmaskLength }}
+    {{- else if $state.network.ipam.ipv6Ula.enabled }}
     # Allocate IPv6 ULA CIDR from IPAM pool
     ipv6IpamPoolId: {{ $state.network.ipam.ipv6Ula.poolId }}
     ipv6NetmaskLength: {{ $state.network.ipam.ipv6Ula.netmaskLength }}
@@ -44,6 +45,8 @@ spec:
     {{- if $state.network.ipv6.ula.cidr }}
     ipv6CidrBlock: {{ $state.network.ipv6.ula.cidr }}
     {{- end }}
+    {{- else if $state.network.ipv6.amazon.enabled }}
+    assignGeneratedIpv6CidrBlock: true
     {{- end }}
     tags:
       Name: {{ $state.network.name }}

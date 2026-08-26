@@ -12,12 +12,21 @@
 # Compute IPAM Status (only if in IPAM mode)
 # ==============================================================================
 {{- $ipamStatus := dict }}
-{{- if $net.mode.ipam }}
+{{- if or $net.ipam.ipv4.enabled (and $net.ipam.ipv6Ula.enabled $net.ipv6.ula.enabled) $net.ipv6.gua.enabled }}
   {{- if $net.ipam.ipv4.enabled }}
     {{- $ipamStatus = set $ipamStatus "ipv4" (dict "cidr" ($obs.vpc.cidr | default "Pending")) }}
   {{- end }}
-  {{- if $net.ipam.ipv6Ula.enabled }}
+  {{- if and $net.ipam.ipv6Ula.enabled $net.ipv6.ula.enabled }}
     {{- $ipamStatus = set $ipamStatus "ipv6Ula" (dict "cidr" ($obs.vpc.ipv6Cidr | default "Pending")) }}
+  {{- end }}
+  {{- if $net.ipv6.gua.enabled }}
+    {{- $ipamStatus = set $ipamStatus "ipv6Gua" (dict "cidr" ($obs.vpc.ipv6Cidr | default "Pending")) }}
+  {{- end }}
+  {{- if or $net.ipam.resourcePlanning.ipv4.enabled $net.ipam.resourcePlanning.ipv6.enabled }}
+    {{- $ipamStatus = set $ipamStatus "resourcePlanning" (dict
+      "ipv4PoolId" ($obs.ipamPlanning.ipv4.id | default "Pending")
+      "ipv6PoolId" ($obs.ipamPlanning.ipv6.id | default "Pending")
+    ) }}
   {{- end }}
 {{- end }}
 
@@ -27,6 +36,9 @@
 {{- $cidrStatus := dict "ipv4" ($obs.vpc.cidr | default "Pending") }}
 {{- if $net.ipv6.ula.enabled }}
   {{- $cidrStatus = set $cidrStatus "ipv6Ula" ($obs.vpc.ipv6Cidr | default "Pending") }}
+{{- end }}
+{{- if $net.ipv6.gua.enabled }}
+  {{- $cidrStatus = set $cidrStatus "ipv6Gua" ($obs.vpc.ipv6Cidr | default "Pending") }}
 {{- end }}
 {{- if $net.ipv6.amazon.enabled }}
   {{- $cidrStatus = set $cidrStatus "ipv6AmazonProvided" ($obs.vpc.ipv6Cidr | default "Pending") }}
@@ -164,8 +176,20 @@
 # ==============================================================================
 # Set $state.status slice
 # ==============================================================================
+{{- $ready := $obs.vpc.ready }}
+{{- if $net.ipam.resourcePlanning.ipv4.enabled }}
+  {{- $ready = and $ready $obs.ipamPlanning.ipv4.ready $obs.ipamPlanning.ipv4.cidrReady }}
+{{- end }}
+{{- if $net.ipam.resourcePlanning.ipv6.enabled }}
+  {{- $ready = and $ready $obs.ipamPlanning.ipv6.ready $obs.ipamPlanning.ipv6.cidrReady }}
+{{- end }}
+{{- range $subnet := concat $net.subnets.public $net.subnets.private }}
+  {{- $subnetObs := get $obs.subnets $subnet.resourceName | default dict }}
+  {{- $ready = and $ready ($subnetObs.ready | default false) }}
+{{- end }}
+
 {{- $status := dict
-  "ready" $obs.vpc.ready
+  "ready" $ready
   "network" $networkStatus
   "spec" (dict
     "raw" $state.spec.raw
@@ -173,9 +197,8 @@
   )
 }}
 
-{{- if $net.mode.ipam }}
+{{- if or $net.ipam.ipv4.enabled (and $net.ipam.ipv6Ula.enabled $net.ipv6.ula.enabled) $net.ipv6.gua.enabled }}
   {{- $status = set $status "ipam" $ipamStatus }}
 {{- end }}
 
 {{- $state = set $state "status" $status }}
-

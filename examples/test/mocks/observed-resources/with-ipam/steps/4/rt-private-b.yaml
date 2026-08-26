@@ -1,6 +1,7 @@
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: RouteTable
 metadata:
+  namespace: infra
   name: with-ipam-private-b
   annotations:
     crossplane.io/composition-resource-name: rt-private-b

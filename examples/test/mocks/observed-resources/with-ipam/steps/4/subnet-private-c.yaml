@@ -1,6 +1,7 @@
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Subnet
 metadata:
+  namespace: infra
   name: with-ipam-private-c
   annotations:
     crossplane.io/composition-resource-name: subnet-private-c
@@ -16,7 +17,7 @@ status:
     arn: arn:aws:ec2:us-east-1:123456789012:subnet/subnet-priv-c-0123456789
     vpcId: vpc-0123456789abcdef0
     cidrBlock: "10.100.32.0/20"
-    ipv6CidrBlock: "fd00:100:0:3::/64"
+    ipv6CidrBlock: "2600:1f26:45:8103::/64"
     availabilityZone: us-east-1c
     availabilityZoneId: use1-az3
     mapPublicIpOnLaunch: false

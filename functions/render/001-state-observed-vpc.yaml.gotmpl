@@ -40,6 +40,7 @@
 {{- $vpcIpv6IpamPoolId := $vpcAtProvider.ipv6IpamPoolId | default "" }}
 {{- $vpcIpv6Cidr := $vpcAtProvider.ipv6CidrBlock | default "" }}
 {{- $vpcIpv6AssociationId := $vpcAtProvider.ipv6AssociationId | default "" }}
+{{- $vpcOwnerId := $vpcAtProvider.ownerId | default "" }}
 {{- $vpcReady := get $readiness "vpc" | default false }}
 
 # ==============================================================================
@@ -54,8 +55,8 @@
     "ipv6IpamPoolId" $vpcIpv6IpamPoolId
     "ipv6Cidr" $vpcIpv6Cidr
     "ipv6AssociationId" $vpcIpv6AssociationId
+    "ownerId" $vpcOwnerId
   )
   "_readiness" $readiness
   "_raw" $raw
 )) }}
-

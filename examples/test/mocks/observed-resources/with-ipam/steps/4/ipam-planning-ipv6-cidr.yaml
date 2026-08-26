@@ -1,0 +1,18 @@
+apiVersion: ec2.aws.m.upbound.io/v1beta1
+kind: VPCIpamPoolCidr
+metadata:
+  namespace: infra
+  name: with-ipam-ipv6-planning-cidr
+  annotations:
+    crossplane.io/composition-resource-name: ipam-planning-ipv6-cidr
+    gotemplating.fn.crossplane.io/composition-resource-name: ipam-planning-ipv6-cidr
+status:
+  conditions:
+  - type: Ready
+    status: "True"
+  - type: Synced
+    status: "True"
+  atProvider:
+    id: ipam-pool-vpc-ipv6-0123456789abcdef0_2600:1f26:45:8100::/56
+    ipamPoolId: ipam-pool-vpc-ipv6-0123456789abcdef0
+    cidr: 2600:1f26:45:8100::/56

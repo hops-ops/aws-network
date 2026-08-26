@@ -45,6 +45,7 @@ render\:all:
 		observed=$${entry#*::}; \
 		outfile="$$tmpdir/$$(echo $$entry | tr '/:' '__')"; \
 		( \
+			set -o pipefail; \
 			if [ -n "$$observed" ]; then \
 				echo "=== Rendering $$example with observed-resources $$observed ==="; \
 				up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example --observed-resources=$$observed; \
@@ -75,16 +76,17 @@ validate\:all: generate-configuration
 		observed=$${entry#*::}; \
 		outfile="$$tmpdir/$$(echo $$entry | tr '/:' '__')"; \
 		( \
+			set -o pipefail; \
 			if [ -n "$$observed" ]; then \
 				echo "=== Validating $$example with observed-resources $$observed ==="; \
 				up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example \
 					--observed-resources=$$observed --include-full-xr --quiet | \
-					crossplane beta validate $(XRD_DIR) --error-on-missing-schemas -; \
+					crossplane resource validate $(XRD_DIR) --error-on-missing-schemas -; \
 			else \
 				echo "=== Validating $$example ==="; \
 				up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example \
 					--include-full-xr --quiet | \
-					crossplane beta validate $(XRD_DIR) --error-on-missing-schemas -; \
+					crossplane resource validate $(XRD_DIR) --error-on-missing-schemas -; \
 			fi; \
 			echo "" \
 		) > "$$outfile" 2>&1 & \
@@ -121,9 +123,10 @@ validate\:%: generate-configuration
 	@example="examples/networks/$*.yaml"; \
 	if [ -f "$$example" ]; then \
 		echo "=== Validating $$example ==="; \
+		set -o pipefail; \
 		up composition render --xrd=$(DEFINITION) $(COMPOSITION) $$example \
 			--include-full-xr --quiet | \
-			crossplane beta validate $(XRD_DIR) --error-on-missing-schemas -; \
+			crossplane resource validate $(XRD_DIR) --error-on-missing-schemas -; \
 	else \
 		echo "Example $$example not found"; \
 		exit 1; \

@@ -59,6 +59,11 @@
 {{- $ipamSpec := $spec.ipam | default dict }}
 {{- $ipv4IpamSpec := $ipamSpec.ipv4 | default dict }}
 {{- $ipv6UlaIpamSpec := $ipamSpec.ipv6Ula | default dict }}
+{{- $ipv6GuaIpamSpec := $ipamSpec.ipv6Gua | default dict }}
+{{- $resourcePlanningSpec := $ipamSpec.resourcePlanning | default dict }}
+{{- $resourcePlanningIpv4Spec := $resourcePlanningSpec.ipv4 | default dict }}
+{{- $resourcePlanningIpv6Spec := $resourcePlanningSpec.ipv6 | default dict }}
+{{- $resourcePlanningProviderConfigRef := $resourcePlanningSpec.providerConfigRef | default dict }}
 {{- $ipam := dict
   "ipv4" (dict
     "enabled" ($ipv4IpamSpec.enabled | default false)
@@ -70,6 +75,29 @@
     "poolId" ($ipv6UlaIpamSpec.poolId | default "")
     "netmaskLength" ($ipv6UlaIpamSpec.netmaskLength | default 56)
   )
+  "ipv6Gua" (dict
+    "enabled" ($ipv6GuaIpamSpec.enabled | default false)
+    "poolId" ($ipv6GuaIpamSpec.poolId | default "")
+    "netmaskLength" ($ipv6GuaIpamSpec.netmaskLength | default 56)
+  )
+  "resourcePlanning" (dict
+    "providerConfigRef" (dict
+      "name" ($resourcePlanningProviderConfigRef.name | default "default")
+      "kind" ($resourcePlanningProviderConfigRef.kind | default "ProviderConfig")
+    )
+    "managementPolicies" ($resourcePlanningSpec.managementPolicies | default $managementPolicies)
+    "ipv4" (dict
+      "enabled" ($resourcePlanningIpv4Spec.enabled | default false)
+      "scopeId" ($resourcePlanningIpv4Spec.scopeId | default "")
+      "externalName" ($resourcePlanningIpv4Spec.externalName | default "")
+    )
+    "ipv6" (dict
+      "enabled" ($resourcePlanningIpv6Spec.enabled | default false)
+      "scopeId" ($resourcePlanningIpv6Spec.scopeId | default "")
+      "externalName" ($resourcePlanningIpv6Spec.externalName | default "")
+      "publicIpSource" ($resourcePlanningIpv6Spec.publicIpSource | default "amazon")
+    )
+  )
 }}
 
 # Subnet layout configuration
@@ -77,6 +105,9 @@
 {{- $layoutPublicSpec := $layoutSpec.public | default dict }}
 {{- $layoutPrivateSpec := $layoutSpec.private | default dict }}
 {{- $subnetLayout := dict
+  "ipv4PoolId" ($layoutSpec.ipv4PoolId | default "")
+  "ipv6PoolId" ($layoutSpec.ipv6PoolId | default "")
+  "ipv6NetmaskLength" ($layoutSpec.ipv6NetmaskLength | default 64)
   "availabilityZones" ($layoutSpec.availabilityZones | default (list "a" "b" "c"))
   "public" (dict
     "enabled" ($layoutPublicSpec.enabled | default true)
