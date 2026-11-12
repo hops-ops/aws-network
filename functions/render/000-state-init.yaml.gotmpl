@@ -151,6 +151,8 @@
 {{- $nat := dict
   "enabled" ($natSpec.enabled | default false)
   "strategy" ($natSpec.strategy | default "SingleAz")
+  "singleAzSuffix" ($natSpec.singleAzSuffix | default "")
+  "additionalAzSuffixes" ($natSpec.additionalAzSuffixes | default list)
   "externalNames" ($natSpec.externalNames | default dict)
   "eipExternalNames" ($natSpec.eipExternalNames | default dict)
   "managementPolicies" ($natSpec.managementPolicies | default $managementPolicies)

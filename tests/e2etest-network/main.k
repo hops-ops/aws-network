@@ -139,7 +139,7 @@ _items = [
                         }
                         # Subnet layout - CIDRs calculated from VPC CIDR
                         subnetLayout: {
-                            availabilityZones: ["a", "b"]
+                            availabilityZones: ["a", "c"]
                             public: {
                                 enabled: True
                                 netmaskLength: 24
@@ -149,9 +149,13 @@ _items = [
                                 netmaskLength: 20
                             }
                         }
-                        # No NAT gateway (costs money) - use IPv6 egress-only IGW instead
+                        # Exercise selected routing plus a retained gateway on this
+                        # ephemeral network only; persistent hops-test stays unchanged.
                         nat: {
-                            enabled: False
+                            enabled: True
+                            strategy: "SingleAz"
+                            singleAzSuffix: "c"
+                            additionalAzSuffixes: ["a"]
                         }
                     }
                 },
@@ -259,6 +263,7 @@ _items = [
                 }
             ]
             skipDelete: False
+            cleanupTimeoutSeconds: 1200  # Allow ephemeral NAT/EIP cleanup.
             timeoutSeconds: 1200  # 20 minutes
         }
     }

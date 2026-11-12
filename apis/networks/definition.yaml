@@ -461,6 +461,28 @@ spec:
                     - HighlyAvailable
                     - None
                     default: SingleAz
+                  singleAzSuffix:
+                    type: string
+                    pattern: '^[a-z]$'
+                    maxLength: 1
+                    description: |
+                      Public subnet AZ suffix used by private IPv4 default routes
+                      with SingleAz (for example, c). Omitted selects the first
+                      alphabetically sorted configured AZ, preserving the default.
+                      Must identify a configured public subnet when NAT is enabled.
+                  additionalAzSuffixes:
+                    type: array
+                    x-kubernetes-list-type: set
+                    maxItems: 26
+                    items:
+                      type: string
+                      pattern: '^[a-z]$'
+                      maxLength: 1
+                    description: |
+                      Extra public AZs in which to create or retain NAT gateways
+                      with SingleAz, without changing private route targets.
+                      Use to prepare a replacement and retain the old gateway
+                      through cutover. Ignored by other NAT strategies.
                   managementPolicies:
                     type: array
                     description: Management operations for NAT gateways and EIPs. Overrides top-level if set.
