@@ -53,7 +53,7 @@ items = [metav1alpha1.CompositionTest {
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "Route"
             metadata = {name = "nat-placement-rt-private-" + az + "-default-ipv4", namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "route-rt-private-" + az + "-default-ipv4"}}
-            spec.forProvider.natGatewayIdRef.name = "nat-placement-nat-" + case.prior
+            spec.forProvider = {natGatewayId = "nat-cached-" + case.prior, natGatewayIdRef.name = "nat-placement-nat-" + case.prior}
         } for az in case.zones] if case.prior else [])
         assertResources = [{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
@@ -65,6 +65,8 @@ items = [metav1alpha1.CompositionTest {
             kind = "Route"
             metadata.name = "nat-placement-rt-private-" + az + "-default-ipv4"
             spec.forProvider = {destinationCidrBlock = "0.0.0.0/0", routeTableIdRef.name = "nat-placement-private-rt-" + az, natGatewayIdRef.name = "nat-placement-nat-" + (az if case.route == "by-zone" else case.route)}
+            if case.route != "by-zone" and (case.nat.get("singleAzSuffix") or case.nat.get("additionalAzSuffixes")):
+                spec.forProvider.natGatewayIdRef.policy.resolve = "Always"
         } for az in case.zones] + [{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "Subnet"

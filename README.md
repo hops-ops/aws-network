@@ -161,6 +161,9 @@ only when NAT is enabled with `SingleAz`.
 `nat.additionalAzSuffixes` creates or retains extra gateways without changing
 route targets. When the currently referenced gateway is retained in this set,
 existing Route references stay on it until the selected replacement is Ready.
+Opting into either control sets `natGatewayIdRef.policy.resolve: Always` on
+private IPv4 routes so existing cached NAT IDs follow a changed reference.
+Omitted controls preserve the original reference policy.
 The Route always remains desired; a later readiness dip preserves its current
 reference instead of switching traffic back. Keep the existing subnet layout and move from `a` to `c` in three
 separately verified steps:
