@@ -42,17 +42,17 @@ items = [metav1alpha1.CompositionTest {
         observedResources = [{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "VPC"
-            metadata = {name = "nat-placement", annotations = {"crossplane.io/composition-resource-name" = "vpc"}}
+            metadata = {name = "nat-placement", namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "vpc"}}
             status = {conditions = [{type = "Ready", status = "True"}, {type = "Synced", status = "True"}], atProvider = {id = "vpc-test123", cidrBlock = "10.42.0.0/16"}}
         }] + ([{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "NATGateway"
-            metadata = {name = "nat-placement-nat-c", annotations = {"crossplane.io/composition-resource-name" = "nat-c"}}
+            metadata = {name = "nat-placement-nat-c", namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "nat-c"}}
             status = {conditions = [{type = "Ready", status = "True" if case.natReady else "False"}], atProvider = {id = "nat-test-c"}}
         }] + [{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "Route"
-            metadata = {name = "nat-placement-rt-private-" + az + "-default-ipv4", annotations = {"crossplane.io/composition-resource-name" = "route-rt-private-" + az + "-default-ipv4"}}
+            metadata = {name = "nat-placement-rt-private-" + az + "-default-ipv4", namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "route-rt-private-" + az + "-default-ipv4"}}
             spec.forProvider.natGatewayIdRef.name = "nat-placement-nat-" + case.prior
         } for az in case.zones] if case.prior else [])
         assertResources = [{
