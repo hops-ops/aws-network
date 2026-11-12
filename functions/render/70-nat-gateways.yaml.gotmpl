@@ -114,13 +114,26 @@ spec:
 {{- range $rt := $state.network.routeTables.privateRouteTables }}
 {{- $natConfig := $rt.natGateway }}
 {{- if $natConfig }}
+{{- $routeKey := printf "route-%s-default-ipv4" $rt.resourceName }}
+{{- $targetObs := get $state.observed.nat $natConfig.resourceName | default dict }}
+{{- if and (eq $state.network.nat.strategy "SINGLEAZ") (gt (len $state.spec.effective.nat.additionalAzSuffixes) 0) (not $targetObs.ready) }}
+  {{- /* Keep an existing route on a retained gateway until its replacement is Ready.
+        Never un-render the Route; a later readiness dip preserves its current ref. */}}
+  {{- $route := (get $state.observed._raw $routeKey | default dict).resource | default dict }}
+  {{- $previousRef := ((($route.spec | default dict).forProvider | default dict).natGatewayIdRef | default dict).name | default "" }}
+  {{- range $candidate := $state.network.nat.configs }}
+    {{- if eq $candidate.name $previousRef }}
+      {{- $natConfig = $candidate }}
+    {{- end }}
+  {{- end }}
+{{- end }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Route
 metadata:
   name: {{ $state.network.name }}-{{ $rt.resourceName }}-default-ipv4
   annotations:
-    {{ setResourceNameAnnotation (printf "route-%s-default-ipv4" $rt.resourceName) }}
+    {{ setResourceNameAnnotation $routeKey }}
   labels: {{ $state.network.labels | toJson }}
 spec:
   managementPolicies: {{ $state.network.routeTables.managementPolicies | toJson }}

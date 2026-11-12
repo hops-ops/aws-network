@@ -1,0 +1,20 @@
+apiVersion: aws.hops.ops.com.ai/v1alpha1
+kind: Network
+metadata:
+  name: single-az-nat
+  namespace: infra
+spec:
+  region: us-east-2
+  providerConfigRef:
+    name: default
+    kind: ProviderConfig
+  vpc:
+    cidr: "10.42.0.0/16"
+  subnetLayout:
+    availabilityZones: [a, b, c]
+  nat:
+    enabled: true
+    strategy: SingleAz
+    singleAzSuffix: c
+    # Retain the previous gateway until route and egress checks pass.
+    additionalAzSuffixes: [a]

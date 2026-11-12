@@ -18,6 +18,7 @@ EXAMPLES := \
     examples/networks/dual-stack-ula.yaml:: \
     examples/networks/dual-stack-amazon.yaml:: \
     examples/networks/high-availability.yaml:: \
+    examples/networks/single-az-nat.yaml:: \
     examples/networks/import-example.yaml:: \
     examples/networks/with-ipam.yaml::examples/test/mocks/observed-resources/with-ipam/steps/1 \
     examples/networks/with-ipam.yaml::examples/test/mocks/observed-resources/with-ipam/steps/2 \

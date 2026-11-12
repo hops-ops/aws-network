@@ -34,9 +34,21 @@
 {{- $natStrategyUpper := upper $eff.nat.strategy }}
 {{- $natDesired := and $eff.nat.enabled $state.network.subnets.hasPublic $state.network.subnets.hasPrivate (ne $natStrategyUpper "NONE") }}
 
-{{- $singleNatSuffix := "" }}
-{{- if gt (len $state.network.subnets.availabilityZones) 0 }}
+{{- $singleNatSuffix := $eff.nat.singleAzSuffix }}
+{{- if and (eq $singleNatSuffix "") (gt (len $state.network.subnets.availabilityZones) 0) }}
   {{- $singleNatSuffix = index $state.network.subnets.availabilityZones 0 }}
+{{- end }}
+
+{{- if and $natDesired (eq $natStrategyUpper "SINGLEAZ") (or (ne $eff.nat.singleAzSuffix "") (gt (len $eff.nat.additionalAzSuffixes) 0)) }}
+  {{- $publicAzs := list }}
+  {{- range $subnet := $state.network.subnets.public }}
+    {{- $publicAzs = append $publicAzs $subnet.azSuffix }}
+  {{- end }}
+  {{- range $suffix := concat (list $singleNatSuffix) $eff.nat.additionalAzSuffixes }}
+    {{- if not (has $suffix $publicAzs) }}
+      {{- fail (printf "NAT AZ suffix %q must identify a configured public subnet" $suffix) }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 
 {{- $natConfigsForCreation := list }}
@@ -51,7 +63,7 @@
     {{- if eq $natStrategyUpper "HIGHLYAVAILABLE" }}
       {{- $needsNat = true }}
     {{- else if eq $natStrategyUpper "SINGLEAZ" }}
-      {{- $needsNat = eq $azSuffix $singleNatSuffix }}
+      {{- $needsNat = or (eq $azSuffix $singleNatSuffix) (has $azSuffix $eff.nat.additionalAzSuffixes) }}
     {{- end }}
 
     {{- if and $needsNat (not (hasKey $natConfigsByAz $azSuffix)) }}

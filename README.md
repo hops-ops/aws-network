@@ -146,8 +146,62 @@ planning pool IDs.
 | Strategy | NAT Gateways | Monthly Cost | Use Case |
 |----------|--------------|--------------|----------|
 | **None** | 0 | $0 | Isolated workloads, no internet needed |
-| **SingleAz** | 1 | ~$32 | Dev/test, cost-sensitive |
+| **SingleAz** | 1, plus explicitly requested extras | ~$32 per gateway | Dev/test, cost-sensitive |
 | **HighlyAvailable** | 1 per AZ (3) | ~$96 | Production, uptime-critical |
+
+### Select a SingleAz gateway and stage a cutover
+
+`nat.singleAzSuffix` selects the public AZ used by every private IPv4 default
+route with `SingleAz`. Omit it to keep the first alphabetically sorted configured
+AZ. Changing the order of `subnetLayout.availabilityZones` does not change that
+fallback. A requested suffix must have a public subnet; an invalid request fails
+the composition before applying a partial desired set. The controls below apply
+only when NAT is enabled with `SingleAz`.
+
+`nat.additionalAzSuffixes` creates or retains extra gateways without changing
+route targets. When the currently referenced gateway is retained in this set,
+existing Route references stay on it until the selected replacement is Ready.
+The Route always remains desired; a later readiness dip preserves its current
+reference instead of switching traffic back. Keep the existing subnet layout and move from `a` to `c` in three
+separately verified steps:
+
+1. **Prepare:** keep routes on `a` and create `c` alongside it.
+
+   ```yaml
+   nat:
+     enabled: true
+     strategy: SingleAz
+     singleAzSuffix: a
+     additionalAzSuffixes: [c]
+   ```
+
+   Wait for NAT-c to be available in its expected public subnet. Check the
+   existing routes still use NAT-a; do not treat an allocated NAT ID as availability.
+2. **Cut over:** select `c` and retain `a` for recovery.
+
+   ```yaml
+   nat:
+     enabled: true
+     strategy: SingleAz
+     singleAzSuffix: c
+     additionalAzSuffixes: [a]
+   ```
+
+   Check every private IPv4 default route targets NAT-c and verify outbound
+   connectivity from workloads. The new gateway uses a new public IP; update
+   any source-IP allowlists before cutover and allow for outbound reconnections.
+   Retaining NAT-a does not transfer existing connection state.
+3. **Retire:** after route and egress verification, remove `additionalAzSuffixes`.
+   Subnet names/CIDRs and private Route names stay stable through these steps.
+   With Delete permitted, the obsolete gateway/EIP are removed; with management
+   policies excluding Delete, AWS retains them. In that case, explicitly review
+   and remove the now-unused AWS NAT/EIP to stop their ongoing charges. Verify
+   no route still points to the old gateway before deleting it.
+
+See [the selected-AZ example](examples/networks/single-az-nat.yaml). The active
+suffix can also appear in the additional list without creating a duplicate gateway.
+`HighlyAvailable` continues to create one gateway per public AZ and route each
+private AZ to its local gateway. `None` and disabled NAT continue to create none.
 
 ### IPv6 Changes Everything
 
@@ -499,6 +553,8 @@ spec:
 |-------|------|---------|-------------|
 | `enabled` | boolean | false | Enable NAT Gateways |
 | `strategy` | string | SingleAz | `SingleAz`, `HighlyAvailable`, `None` |
+| `singleAzSuffix` | string | First sorted AZ | Active public AZ suffix for SingleAz private IPv4 routes |
+| `additionalAzSuffixes` | string[] | [] | Extra SingleAz gateways to create/retain without retargeting routes |
 
 ### spec.transitGateway
 
