@@ -144,6 +144,9 @@ spec:
     destinationCidrBlock: 0.0.0.0/0
     natGatewayIdRef:
       name: {{ $natConfig.name }}
+      # Existing Routes cache natGatewayId; re-resolve after a target ref changes.
+      policy:
+        resolve: Always
   providerConfigRef:
     name: {{ $state.network.providerConfig.name }}
     kind: {{ $state.network.providerConfig.kind }}
