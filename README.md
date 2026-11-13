@@ -201,6 +201,12 @@ separately verified steps:
    and remove the now-unused AWS NAT/EIP to stop their ongoing charges. Verify
    no route still points to the old gateway before deleting it.
 
+Routes include the observed IDs of their selected NAT gateway and route table
+alongside their references once those resources exist. This keeps both IDs under
+composition ownership when the provider re-resolves a changed reference. IDs
+remain present across readiness changes; initial creation still uses references
+until the target IDs are available.
+
 See [the selected-AZ example](examples/networks/single-az-nat.yaml). The active
 suffix can also appear in the additional list without creating a duplicate gateway.
 `HighlyAvailable` continues to create one gateway per public AZ and route each

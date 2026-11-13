@@ -48,9 +48,14 @@ items = [metav1alpha1.CompositionTest {
         }] + ([{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "NATGateway"
-            metadata = {name = "nat-placement-nat-c", namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "nat-c"}}
-            status = {conditions = [{type = "Ready", status = "True" if case.natReady else "False"}], atProvider = {id = "nat-test-c"}}
-        }] + [{
+            metadata = {name = "nat-placement-nat-" + az, namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "nat-" + az}}
+            status = {conditions = [{type = "Ready", status = "True" if case.natReady else "False"}], atProvider = {id = "nat-test-" + az}}
+        } for az in ["a", "b", "c"]] + [{
+            apiVersion = "ec2.aws.m.upbound.io/v1beta1"
+            kind = "RouteTable"
+            metadata = {name = "nat-placement-private-rt-" + az, namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "rt-private-" + az}}
+            status = {conditions = [{type = "Ready", status = "False"}], atProvider = {id = "rtb-test-" + az}}
+        } for az in case.zones] + [{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "Route"
             metadata = {name = "nat-placement-rt-private-" + az + "-default-ipv4", namespace = "default", annotations = {"crossplane.io/composition-resource-name" = "route-rt-private-" + az + "-default-ipv4"}}
@@ -67,6 +72,9 @@ items = [metav1alpha1.CompositionTest {
             metadata.name = "nat-placement-rt-private-" + az + "-default-ipv4"
             spec.forProvider = {destinationCidrBlock = "0.0.0.0/0", routeTableIdRef.name = "nat-placement-private-rt-" + az, natGatewayIdRef.name = "nat-placement-nat-" + (az if case.route == "by-zone" else case.route)}
             spec.forProvider.natGatewayIdRef.policy.resolve = "Always"
+            if case.prior:
+                spec.forProvider.routeTableId = "rtb-test-" + az
+                spec.forProvider.natGatewayId = "nat-test-" + (az if case.route == "by-zone" else case.route)
         } for az in case.zones] + [{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "Subnet"
