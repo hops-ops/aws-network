@@ -4,6 +4,7 @@ import models.io.upbound.dev.meta.v1alpha1 as metav1alpha1
 # of documentation examples. Unsorted layout AZs exercise the legacy fallback.
 _cases: [any] = [
     {name = "default-layout", nat = {enabled = True}, created = ["a"], route = "a", manual = False, zones = ["c", "a", "b"], prior = "", natReady = False}
+    {name = "return-to-default-with-cached-c", nat = {enabled = True}, created = ["a"], route = "a", manual = False, zones = ["a", "b", "c"], prior = "c", natReady = False}
     {name = "prepare-c", nat = {enabled = True, additionalAzSuffixes = ["c"]}, created = ["a", "c"], route = "a", manual = False, zones = ["a", "b", "c"], prior = "", natReady = False}
     {name = "cutover-retain-a", nat = {enabled = True, singleAzSuffix = "c", additionalAzSuffixes = ["a"]}, created = ["a", "c"], route = "c", manual = False, zones = ["a", "b", "c"], prior = "", natReady = False}
     {name = "wait-for-c-ready", nat = {enabled = True, singleAzSuffix = "c", additionalAzSuffixes = ["a"]}, created = ["a", "c"], route = "a", manual = False, zones = ["a", "b", "c"], prior = "a", natReady = False}
@@ -65,8 +66,7 @@ items = [metav1alpha1.CompositionTest {
             kind = "Route"
             metadata.name = "nat-placement-rt-private-" + az + "-default-ipv4"
             spec.forProvider = {destinationCidrBlock = "0.0.0.0/0", routeTableIdRef.name = "nat-placement-private-rt-" + az, natGatewayIdRef.name = "nat-placement-nat-" + (az if case.route == "by-zone" else case.route)}
-            if case.route != "by-zone" and (case.nat.get("singleAzSuffix") or case.nat.get("additionalAzSuffixes")):
-                spec.forProvider.natGatewayIdRef.policy.resolve = "Always"
+            spec.forProvider.natGatewayIdRef.policy.resolve = "Always"
         } for az in case.zones] + [{
             apiVersion = "ec2.aws.m.upbound.io/v1beta1"
             kind = "Subnet"

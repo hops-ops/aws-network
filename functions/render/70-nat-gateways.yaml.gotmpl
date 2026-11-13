@@ -144,11 +144,9 @@ spec:
     destinationCidrBlock: 0.0.0.0/0
     natGatewayIdRef:
       name: {{ $natConfig.name }}
-      {{- if and (eq $state.network.nat.strategy "SINGLEAZ") (or (ne $state.spec.effective.nat.singleAzSuffix "") (gt (len $state.spec.effective.nat.additionalAzSuffixes) 0)) }}
       # Existing Routes cache natGatewayId; re-resolve after a target ref changes.
       policy:
         resolve: Always
-      {{- end }}
   providerConfigRef:
     name: {{ $state.network.providerConfig.name }}
     kind: {{ $state.network.providerConfig.kind }}
