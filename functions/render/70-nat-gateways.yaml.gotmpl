@@ -127,6 +127,8 @@ spec:
     {{- end }}
   {{- end }}
 {{- end }}
+{{- $routeTableObs := get $state.observed.rt.private $rt.resourceName | default dict }}
+{{- $selectedNatObs := get $state.observed.nat $natConfig.resourceName | default dict }}
 ---
 apiVersion: ec2.aws.m.upbound.io/v1beta1
 kind: Route
@@ -139,9 +141,17 @@ spec:
   managementPolicies: {{ $state.network.routeTables.managementPolicies | toJson }}
   forProvider:
     region: {{ $state.network.region }}
+    {{- /* Own observed IDs alongside their refs. The runtime resolver applies only
+          changed fields with SSA; otherwise changing one ref can prune another ID. */}}
+    {{- if $routeTableObs.id }}
+    routeTableId: {{ $routeTableObs.id }}
+    {{- end }}
     routeTableIdRef:
       name: {{ $rt.name }}
     destinationCidrBlock: 0.0.0.0/0
+    {{- if $selectedNatObs.id }}
+    natGatewayId: {{ $selectedNatObs.id }}
+    {{- end }}
     natGatewayIdRef:
       name: {{ $natConfig.name }}
       # Existing Routes cache natGatewayId; re-resolve after a target ref changes.
